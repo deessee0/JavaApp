@@ -1,0 +1,12 @@
+target/
+*.log
+*.class
+*.iml
+.idea/
+.project
+.settings/
+.classpath
+.mvn/wrapper/maven-wrapper.jar
+.DS_Store
+# eventuali credenziali locali
+.env
