@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:padeldb-test
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  h2:
+    console:
+      enabled: false
+  profiles:
+    active: test
+
+logging:
+  level:
+    com.example.padel_app: INFO
