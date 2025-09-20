@@ -29,15 +29,15 @@ public class MatchService {
     private final Map<String, MatchSortingStrategy> sortingStrategies;
     
     public List<Match> getAllMatches() {
-        return matchRepository.findAll();
+        return matchRepository.findAllWithCreator();
     }
     
     public List<Match> getMatchesByStatus(MatchStatus status) {
-        return matchRepository.findByStatus(status);
+        return matchRepository.findByStatusWithCreator(status);
     }
     
     public List<Match> getMatchesByLevel(Level level) {
-        return matchRepository.findByRequiredLevel(level);
+        return matchRepository.findByRequiredLevelWithCreator(level);
     }
     
     // Strategy Pattern Implementation
@@ -46,14 +46,14 @@ public class MatchService {
         MatchSortingStrategy sortingStrategy = sortingStrategies.get(strategyKey);
         
         if (sortingStrategy != null) {
-            List<Match> allMatches = matchRepository.findAll();
+            List<Match> allMatches = matchRepository.findAllWithCreator();
             log.debug("Using {} strategy to sort {} matches", sortingStrategy.getStrategyName(), allMatches.size());
             return sortingStrategy.sort(allMatches);
         }
         
         // Safe fallback - direct repository call to avoid recursion
         log.warn("Strategy {} not found, using date sorting as fallback", strategy);
-        return matchRepository.findAllOrderByDate();
+        return matchRepository.findAllOrderByDateWithCreator();
     }
     
     public List<Match> getMatchesOrderedByDate() {
