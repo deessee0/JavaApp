@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partite - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Sistema di gestione partite padel tra sconosciuti</p>
+        </div>
+        
+        <div class="nav-links">
+            <a th:href="@{/}">🏠 Home</a>
+            <a th:href="@{/matches}">🎾 Partite</a>
+            <a th:href="@{/matches/create}">➕ Crea Partita</a>
+            <a th:href="@{/users}">👥 Utenti</a>
+            <a th:href="@{/h2-console}" target="_blank">🗄️ Database</a>
+        </div>
+
+        <h2>🎾 Lista Partite</h2>
+
+        <div class="filters">
+            <h3>🔍 Filtri e Ordinamento</h3>
+            <form method="GET" th:action="@{/matches}">
+                <div class="filter-group">
+                    <label for="level">Livello:</label>
+                    <select name="level" id="level">
+                        <option value="">Tutti i livelli</option>
+                        <option value="PRINCIPIANTE" th:selected="${level == 'PRINCIPIANTE'}">Principiante</option>
+                        <option value="INTERMEDIO" th:selected="${level == 'INTERMEDIO'}">Intermedio</option>
+                        <option value="AVANZATO" th:selected="${level == 'AVANZATO'}">Avanzato</option>
+                        <option value="PROFESSIONISTA" th:selected="${level == 'PROFESSIONISTA'}">Professionista</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sort">Ordina per:</label>
+                    <select name="sort" id="sort">
+                        <option value="date" th:selected="${sort == 'date'}">Data</option>
+                        <option value="popularity" th:selected="${sort == 'popularity'}">Popolarità</option>
+                        <option value="level" th:selected="${sort == 'level'}">Livello</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Applica Filtri</button>
+            </form>
+        </div>
+
+        <div class="alert alert-info" th:if="${matches.empty}">
+            <strong>Nessuna partita trovata.</strong> Prova a modificare i filtri o <a th:href="@{/matches/create}">crea una nuova partita</a>.
+        </div>
+
+        <div class="match-grid" th:if="${!matches.empty}">
+            <div class="match-card" th:each="match : ${matches}">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <h3 th:text="${match.location}" style="margin: 0;">Location</h3>
+                    <span class="match-status" 
+                          th:class="'match-status status-' + ${match.status.name().toLowerCase()}"
+                          th:text="${match.status.displayName}">
+                        Status
+                    </span>
+                </div>
+                
+                <div class="match-info">
+                    <strong>📅 Data:</strong> 
+                    <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data</span><br>
+                    
+                    <strong>🏆 Livello:</strong> 
+                    <span class="level-badge" 
+                          th:class="'level-badge level-' + ${match.requiredLevel.name().toLowerCase()}"
+                          th:text="${match.requiredLevel.displayName}">
+                        Livello
+                    </span><br>
+                    
+                    <strong>🎯 Tipo:</strong> 
+                    <span th:text="${match.type.displayName}">Tipo</span><br>
+                    
+                    <strong>👤 Creatore:</strong> 
+                    <span th:text="${match.creator.firstName + ' ' + match.creator.lastName}">Creatore</span>
+                </div>
+                
+                <div class="players-info">
+                    <strong>👥 Giocatori:</strong> 
+                    <span th:text="${match.activeRegistrationsCount} + '/4'">0/4</span>
+                    <div style="width: 100%; background: #e0e0e0; height: 8px; border-radius: 4px; margin: 5px 0;">
+                        <div style="height: 100%; background: #28a745; border-radius: 4px; transition: width 0.3s;"
+                             th:style="'width: ' + ${match.activeRegistrationsCount * 25} + '%'"></div>
+                    </div>
+                </div>
+                
+                <p th:if="${match.description}" 
+                   th:text="${match.description}" 
+                   style="color: #666; font-style: italic; margin: 10px 0;">
+                    Descrizione
+                </p>
+                
+                <div style="margin-top: 15px;">
+                    <a th:href="@{'/matches/' + ${match.id}}" class="btn btn-primary">Dettagli</a>
+                    
+                    <button th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount < 4}" 
+                            class="btn btn-success" 
+                            onclick="alert('Funzione Join implementata - Demo')">
+                        🚀 Unisciti
+                    </button>
+                    
+                    <button th:if="${match.activeRegistrationsCount >= 4}" 
+                            class="btn btn-warning" disabled>
+                        ⭐ Completa
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
+            <p>App Padel - Progetto Ingegneria del Software - 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

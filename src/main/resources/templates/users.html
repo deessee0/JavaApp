@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utenti - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Sistema di gestione partite padel tra sconosciuti</p>
+        </div>
+        
+        <div class="nav-links">
+            <a th:href="@{/}">🏠 Home</a>
+            <a th:href="@{/matches}">🎾 Partite</a>
+            <a th:href="@{/matches/create}">➕ Crea Partita</a>
+            <a th:href="@{/users}">👥 Utenti</a>
+            <a th:href="@{/h2-console}" target="_blank">🗄️ Database</a>
+        </div>
+
+        <h2>👥 Community Padel</h2>
+
+        <div class="alert alert-info">
+            <strong>Community attiva!</strong> Ecco tutti i giocatori registrati nell'app con i loro livelli e statistiche.
+        </div>
+
+        <div class="match-grid">
+            <div class="match-card" th:each="user : ${users}">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <h3 th:text="${user.firstName + ' ' + user.lastName}" style="margin: 0;">Nome Utente</h3>
+                    <span class="level-badge" 
+                          th:class="'level-badge level-' + ${user.declaredLevel.name().toLowerCase()}"
+                          th:text="${user.declaredLevel.displayName}">
+                        Livello
+                    </span>
+                </div>
+                
+                <div class="match-info">
+                    <strong>👤 Username:</strong> 
+                    <span th:text="${user.username}">username</span><br>
+                    
+                    <strong>📧 Email:</strong> 
+                    <span th:text="${user.email}">email</span><br>
+                    
+                    <strong>🏆 Livello Dichiarato:</strong> 
+                    <span class="level-badge" 
+                          th:class="'level-badge level-' + ${user.declaredLevel.name().toLowerCase()}"
+                          th:text="${user.declaredLevel.displayName}">
+                        Livello
+                    </span><br>
+                    
+                    <strong>⭐ Livello Percepito:</strong> 
+                    <span th:if="${user.perceivedLevel != null}"
+                          class="level-badge" 
+                          th:class="'level-badge level-' + ${user.perceivedLevel.name().toLowerCase()}"
+                          th:text="${user.perceivedLevel.displayName}">
+                        Livello
+                    </span>
+                    <span th:if="${user.perceivedLevel == null}" style="color: #999;">
+                        Non ancora valutato
+                    </span>
+                </div>
+                
+                <div class="players-info">
+                    <strong>🎾 Partite Giocate:</strong> 
+                    <span th:text="${user.matchesPlayed}" style="font-size: 1.2em; font-weight: bold; color: #28a745;">0</span>
+                    
+                    <div th:if="${user.matchesPlayed > 0}" style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; color: #666;">Esperienza</span>
+                            <span th:if="${user.matchesPlayed < 5}" style="color: #17a2b8;">🌟 Principiante</span>
+                            <span th:if="${user.matchesPlayed >= 5 and user.matchesPlayed < 15}" style="color: #28a745;">🌟🌟 Esperto</span>
+                            <span th:if="${user.matchesPlayed >= 15}" style="color: #dc3545;">🌟🌟🌟 Veterano</span>
+                        </div>
+                        <div style="width: 100%; background: #e0e0e0; height: 6px; border-radius: 3px; margin: 5px 0;">
+                            <div style="height: 100%; background: #28a745; border-radius: 3px; transition: width 0.3s;"
+                                 th:style="'width: ' + ${user.matchesPlayed > 20 ? 100 : user.matchesPlayed * 5} + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn btn-primary" onclick="alert('Visualizzazione profilo dettagliato - Demo')">
+                        👤 Profilo Completo
+                    </button>
+                    <button class="btn btn-success" onclick="alert('Invita a partita - Demo')">
+                        🚀 Invita
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info" th:if="${users.empty}">
+            <strong>Nessun utente registrato.</strong> Il database è vuoto o non è stato inizializzato correttamente.
+        </div>
+
+        <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
+            <p>App Padel - Progetto Ingegneria del Software - 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle != null ? pageTitle + ' - App Padel' : 'App Padel'}">App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Sistema di gestione partite padel tra sconosciuti</p>
+        </div>
+        
+        <div class="nav-links">
+            <a th:href="@{/}">🏠 Home</a>
+            <a th:href="@{/matches}">🎾 Partite</a>
+            <a th:href="@{/matches/create}">➕ Crea Partita</a>
+            <a th:href="@{/users}">👥 Utenti</a>
+            <a th:href="@{/h2-console}" target="_blank">🗄️ Database</a>
+        </div>
+        
+        <main th:fragment="content">
+            <!-- Content will be replaced -->
+        </main>
+        
+        <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
+            <p>App Padel - Progetto Ingegneria del Software - 2025</p>
+        </footer>
+    </div>
+</body>
+</html>
