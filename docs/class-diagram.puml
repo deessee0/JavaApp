@@ -1,0 +1,241 @@
+@startuml Class Diagram - App Padel
+
+title Sistema Gestione Partite Padel - Class Diagram
+
+' Packages
+package "model" {
+  
+  class User {
+    -id: Long
+    -username: String
+    -email: String
+    -firstName: String
+    -lastName: String
+    -password: String
+    -declaredLevel: Level
+    -perceivedLevel: Level
+    -matchesPlayed: int
+    +getFullName(): String
+  }
+  
+  class Match {
+    -id: Long
+    -location: String
+    -dateTime: LocalDateTime
+    -description: String
+    -requiredLevel: Level
+    -type: MatchType
+    -status: MatchStatus
+    -creator: User
+    -registrations: List<Registration>
+    -feedbacks: List<Feedback>
+    +getActiveRegistrationsCount(): int
+    +isFull(): boolean
+  }
+  
+  class Registration {
+    -id: Long
+    -user: User
+    -match: Match
+    -status: RegistrationStatus
+    -registeredAt: LocalDateTime
+  }
+  
+  class Feedback {
+    -id: Long
+    -author: User
+    -targetUser: User
+    -match: Match
+    -suggestedLevel: Level
+    -comment: String
+    -createdAt: LocalDateTime
+  }
+  
+  enum Level {
+    PRINCIPIANTE
+    INTERMEDIO
+    AVANZATO
+    PROFESSIONISTA
+  }
+  
+  enum MatchType {
+    PROPOSTA
+    FISSA
+  }
+  
+  enum MatchStatus {
+    WAITING
+    CONFIRMED
+    FINISHED
+    CANCELLED
+  }
+  
+  enum RegistrationStatus {
+    JOINED
+    CANCELLED
+  }
+}
+
+package "service" {
+  
+  class MatchService {
+    -matchRepository: MatchRepository
+    -eventPublisher: ApplicationEventPublisher
+    -strategies: Map<String, MatchSortingStrategy>
+    +createMatch(request): Match
+    +joinMatch(matchId, userId): Registration
+    +leaveMatch(matchId, userId): void
+    +getMatchesOrderedByDate(): List<Match>
+    +getMatchesOrderedByPopularity(): List<Match>
+    +getMatchesOrderedByLevel(): List<Match>
+  }
+  
+  class RegistrationService {
+    -registrationRepository: RegistrationRepository
+    +registerUser(match, user): Registration
+    +cancelRegistration(registrationId): void
+    +getActiveRegistrations(match): List<Registration>
+  }
+  
+  class FeedbackService {
+    -feedbackRepository: FeedbackRepository
+    -userService: UserService
+    +createFeedback(request): Feedback
+    +updatePerceivedLevel(userId): void
+  }
+  
+  class NotificationService <<Singleton>> {
+    +sendMatchConfirmedNotification(match): void
+    +sendMatchFinishedNotification(match): void
+  }
+}
+
+package "event" {
+  
+  class MatchConfirmedEvent {
+    -match: Match
+    -timestamp: LocalDateTime
+  }
+  
+  class MatchFinishedEvent {
+    -match: Match
+    -timestamp: LocalDateTime
+  }
+}
+
+package "listener" {
+  
+  class MatchEventListener <<Observer>> {
+    -notificationService: NotificationService
+    +handleMatchConfirmed(event): void
+    +handleMatchFinished(event): void
+  }
+}
+
+package "strategy" {
+  
+  interface MatchSortingStrategy <<Strategy>> {
+    +sort(matches: List<Match>): List<Match>
+  }
+  
+  class DateSortingStrategy {
+    +sort(matches: List<Match>): List<Match>
+  }
+  
+  class PopularitySortingStrategy {
+    +sort(matches: List<Match>): List<Match>
+  }
+  
+  class LevelSortingStrategy {
+    +sort(matches: List<Match>): List<Match>
+  }
+}
+
+package "repository" {
+  
+  interface UserRepository {
+    +findByUsername(username): Optional<User>
+    +findByEmail(email): Optional<User>
+  }
+  
+  interface MatchRepository {
+    +findByStatus(status): List<Match>
+    +findAllWithCreator(): List<Match>
+    +findByRequiredLevel(level): List<Match>
+  }
+  
+  interface RegistrationRepository {
+    +findByMatchAndUser(match, user): Optional<Registration>
+    +findByMatchAndStatus(match, status): List<Registration>
+  }
+  
+  interface FeedbackRepository {
+    +findByAuthorAndTargetUserAndMatch(...): Optional<Feedback>
+    +findByTargetUser(user): List<Feedback>
+  }
+}
+
+package "controller" {
+  
+  class MatchController {
+    -matchService: MatchService
+    +getAllMatches(sort, level): ResponseEntity
+    +createMatch(request): ResponseEntity
+    +joinMatch(id, userId): ResponseEntity
+  }
+  
+  class WebController {
+    -matchService: MatchService
+    -userService: UserService
+    +home(model): String
+    +matches(model, status): String
+  }
+}
+
+' Relationships
+User "1" -- "*" Registration : registered >
+User "1" -- "*" Feedback : author >
+User "1" -- "*" Feedback : target >
+User "1" -- "*" Match : creates >
+
+Match "1" -- "*" Registration : has >
+Match "1" -- "*" Feedback : has >
+
+MatchService --> MatchRepository
+MatchService --> MatchSortingStrategy : uses >
+MatchService ..> MatchConfirmedEvent : publishes >
+
+RegistrationService --> RegistrationRepository
+
+FeedbackService --> FeedbackRepository
+
+MatchEventListener ..> MatchConfirmedEvent : listens >
+MatchEventListener ..> MatchFinishedEvent : listens >
+MatchEventListener --> NotificationService : uses >
+
+DateSortingStrategy ..|> MatchSortingStrategy
+PopularitySortingStrategy ..|> MatchSortingStrategy
+LevelSortingStrategy ..|> MatchSortingStrategy
+
+MatchController --> MatchService
+WebController --> MatchService
+
+note right of MatchSortingStrategy
+  Strategy Pattern:
+  Algoritmi di ordinamento
+  intercambiabili
+end note
+
+note right of MatchEventListener
+  Observer Pattern:
+  Ascolta eventi di cambio
+  stato delle partite
+end note
+
+note right of NotificationService
+  Singleton Pattern:
+  Unica istanza del
+  servizio notifiche
+end note
+
+@enduml

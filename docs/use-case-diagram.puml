@@ -1,0 +1,71 @@
+@startuml Use Case Diagram - App Padel
+
+title Sistema Gestione Partite Padel - Use Case Diagram
+
+left to right direction
+
+actor "Giocatore" as player
+actor "Sistema" as system
+
+rectangle "App Padel" {
+  
+  usecase "Registra Utente" as UC1
+  usecase "Visualizza Profilo" as UC2
+  usecase "Crea Partita" as UC3
+  usecase "Unisciti a Partita" as UC4
+  usecase "Abbandona Partita" as UC5
+  usecase "Visualizza Lista Partite" as UC6
+  usecase "Filtra Partite" as UC7
+  usecase "Ordina Partite" as UC8
+  usecase "Fornisci Feedback" as UC9
+  usecase "Visualizza Community" as UC10
+  
+  usecase "Conferma Partita\n(auto al 4° giocatore)" as UC11
+  usecase "Termina Partita" as UC12
+  usecase "Invia Notifiche" as UC13
+  usecase "Aggiorna Livello Percepito" as UC14
+}
+
+' Relazioni Giocatore
+player --> UC1
+player --> UC2
+player --> UC3
+player --> UC4
+player --> UC5
+player --> UC6
+player --> UC9
+player --> UC10
+
+' Inclusioni
+UC6 ..> UC7 : <<include>>
+UC6 ..> UC8 : <<include>>
+UC4 ..> UC11 : <<extend>>
+
+' Relazioni Sistema
+system --> UC11
+system --> UC12
+system --> UC13
+system --> UC14
+
+' Dipendenze
+UC9 ..> UC14 : <<trigger>>
+UC11 ..> UC13 : <<trigger>>
+
+note right of UC11
+  La conferma avviene automaticamente
+  quando si raggiungono 4 iscritti.
+  Implementato con Observer Pattern.
+end note
+
+note right of UC8
+  L'ordinamento usa Strategy Pattern
+  per supportare diversi algoritmi
+  (data, popolarità, livello).
+end note
+
+note right of UC13
+  Il servizio di notifiche
+  è implementato come Singleton.
+end note
+
+@enduml

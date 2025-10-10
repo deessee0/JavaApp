@@ -25,6 +25,7 @@ import java.util.Optional;
 public class MatchService {
     
     private final MatchRepository matchRepository;
+    private final com.example.padel_app.repository.RegistrationRepository registrationRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<String, MatchSortingStrategy> sortingStrategies;
     
@@ -85,7 +86,10 @@ public class MatchService {
     // Business logic for auto-confirming matches when 4 players join (Observer Pattern)
     @Transactional
     public Match checkAndConfirmMatch(Match match) {
-        if (match.getActiveRegistrationsCount() >= 4 && match.getStatus() == MatchStatus.WAITING) {
+        // Use repository to get accurate count instead of entity collection
+        int activeCount = registrationRepository.countActiveRegistrationsByMatch(match);
+        
+        if (activeCount >= 4 && match.getStatus() == MatchStatus.WAITING) {
             MatchStatus oldStatus = match.getStatus();
             match.setStatus(MatchStatus.CONFIRMED);
             Match savedMatch = matchRepository.save(match);

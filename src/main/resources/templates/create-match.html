@@ -10,86 +10,62 @@
     <div class="container">
         <div class="header">
             <h1>🎾 App Padel</h1>
-            <p>Sistema di gestione partite padel tra sconosciuti</p>
+            <p>Gestione partite tra sconosciuti</p>
         </div>
         
-        <div class="nav-links">
-            <a th:href="@{/}">🏠 Home</a>
-            <a th:href="@{/matches}">🎾 Partite</a>
-            <a th:href="@{/matches/create}">➕ Crea Partita</a>
-            <a th:href="@{/users}">👥 Utenti</a>
-            <a th:href="@{/h2-console}" target="_blank">🗄️ Database</a>
-        </div>
+        <nav class="nav-simple">
+            <a th:href="@{/}">Home</a>
+            <a th:href="@{/matches}">Partite</a>
+            <a th:href="@{/matches/create}">Crea Partita</a>
+        </nav>
 
-        <h2>➕ Crea Nuova Partita</h2>
+        <h2>Crea Nuova Partita</h2>
 
-        <div class="alert alert-info">
-            <strong>Stai per creare una partita proposta!</strong> Una volta raggiunta la soglia di 4 giocatori, la partita sarà automaticamente confermata.
-        </div>
-
-        <form style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin: 20px 0;" onsubmit="alert('Creazione partita implementata - Demo'); return false;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label for="location" style="display: block; margin-bottom: 8px; font-weight: bold;">🏟️ Luogo:</label>
-                    <input type="text" id="location" name="location" 
-                           placeholder="Es: Centro Sportivo Milano" 
-                           required
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                
-                <div>
-                    <label for="dateTime" style="display: block; margin-bottom: 8px; font-weight: bold;">📅 Data e Ora:</label>
-                    <input type="datetime-local" id="dateTime" name="dateTime" 
-                           required
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
+        <form class="form-simple" th:action="@{/api/matches}" method="post" th:object="${matchRequest}">
+            <div class="form-group">
+                <label for="location">Luogo</label>
+                <input type="text" id="location" th:field="*{location}" 
+                       placeholder="Es: Centro Sportivo Milano" required>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <label for="requiredLevel" style="display: block; margin-bottom: 8px; font-weight: bold;">🏆 Livello Richiesto:</label>
-                <select id="requiredLevel" name="requiredLevel" 
-                        required
-                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="">Seleziona livello...</option>
+            <div class="form-group">
+                <label for="dateTime">Data e Ora</label>
+                <input type="datetime-local" id="dateTime" th:field="*{dateTime}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="requiredLevel">Livello Richiesto</label>
+                <select id="requiredLevel" th:field="*{requiredLevel}" required>
+                    <option value="">Seleziona livello</option>
                     <option th:each="level : ${levels}" 
                             th:value="${level.name()}" 
-                            th:text="${level.displayName}">
-                        Livello
-                    </option>
+                            th:text="${level.displayName}">Livello</option>
                 </select>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <label for="description" style="display: block; margin-bottom: 8px; font-weight: bold;">📝 Descrizione (opzionale):</label>
-                <textarea id="description" name="description" 
-                          rows="3" 
-                          placeholder="Aggiungi dettagli sulla partita..."
-                          style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+            <div class="form-group">
+                <label for="description">Descrizione (opzionale)</label>
+                <textarea id="description" th:field="*{description}" 
+                          rows="3" placeholder="Dettagli sulla partita..."></textarea>
             </div>
             
-            <div style="text-align: center;">
-                <button type="submit" class="btn btn-success" style="padding: 15px 30px; font-size: 16px;">
-                    🚀 Crea Partita
-                </button>
-                <a th:href="@{/matches}" class="btn btn-secondary" style="padding: 15px 30px; font-size: 16px; margin-left: 10px;">
-                    ❌ Annulla
-                </a>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success btn-lg">Crea Partita</button>
+                <a th:href="@{/matches}" class="btn btn-secondary">Annulla</a>
             </div>
         </form>
 
-        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; color: #856404; margin: 20px 0;">
-            <h4 style="margin-top: 0;">ℹ️ Come Funziona</h4>
-            <ul style="margin: 0; padding-left: 20px;">
-                <li>La partita inizia con stato <strong>"IN ATTESA"</strong></li>
-                <li>Gli altri giocatori possono unirsi fino ad un massimo di <strong>4 persone</strong></li>
-                <li>Al raggiungimento di 4 giocatori, la partita passa automaticamente a <strong>"CONFERMATA"</strong></li>
-                <li>Dopo la data/ora della partita, questa passerà a <strong>"TERMINATA"</strong></li>
-                <li>I giocatori potranno lasciare <strong>feedback</strong> sui compagni di squadra</li>
+        <div class="info-box">
+            <h4>Come funziona</h4>
+            <ul>
+                <li>La partita inizia con stato "In Attesa"</li>
+                <li>Massimo 4 giocatori</li>
+                <li>Conferma automatica al 4° giocatore</li>
             </ul>
         </div>
 
-        <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
-            <p>App Padel - Progetto Ingegneria del Software - 2025</p>
+        <footer>
+            <p>App Padel - Progetto Ingegneria del Software 2025</p>
         </footer>
     </div>
 </body>

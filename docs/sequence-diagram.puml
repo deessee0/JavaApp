@@ -1,0 +1,111 @@
+@startuml Sequence Diagram - App Padel
+
+title Join Partita con Conferma Automatica - Sequence Diagram
+
+actor "Giocatore" as player
+participant "WebController" as web
+participant "MatchService" as service
+participant "MatchRepository" as repo
+participant "RegistrationService" as regService
+participant "EventPublisher" as publisher
+participant "MatchEventListener" as listener
+participant "NotificationService" as notif
+database "Database" as db
+
+== Join Partita ==
+
+player -> web: POST /api/matches/{id}/join
+activate web
+
+web -> service: joinMatch(matchId, userId)
+activate service
+
+service -> repo: findById(matchId)
+activate repo
+repo -> db: SELECT * FROM matches WHERE id = ?
+db --> repo: Match
+repo --> service: Match
+deactivate repo
+
+service -> service: checkMatchAvailable()
+note right: Verifica stato WAITING\ne posti disponibili
+
+service -> regService: registerUser(match, user)
+activate regService
+
+regService -> regService: checkDuplicateRegistration()
+
+regService -> db: INSERT INTO registrations
+db --> regService: Registration
+regService --> service: Registration
+deactivate regService
+
+service -> service: getActiveRegistrationsCount()
+alt Numero iscritti == 4
+    
+    service -> service: updateStatus(CONFIRMED)
+    service -> db: UPDATE matches SET status = 'CONFIRMED'
+    
+    service -> publisher: publishEvent(MatchConfirmedEvent)
+    activate publisher
+    
+    publisher -> listener: handleMatchConfirmed(event)
+    activate listener
+    
+    listener -> notif: sendMatchConfirmedNotification(match)
+    activate notif
+    notif -> notif: log("Partita confermata: {}")
+    notif --> listener: void
+    deactivate notif
+    
+    listener --> publisher: void
+    deactivate listener
+    
+    publisher --> service: void
+    deactivate publisher
+    
+end
+
+service --> web: Registration
+deactivate service
+
+web --> player: ResponseEntity<Registration>
+deactivate web
+
+== Sistema Feedback (dopo partita terminata) ==
+
+player -> web: POST /api/feedback
+activate web
+
+web -> service: createFeedback(request)
+activate service
+
+service -> service: validateFeedback()
+note right: Verifica:\n- Partita FINISHED\n- No feedback duplicato
+
+service -> db: INSERT INTO feedbacks
+db --> service: Feedback
+
+service -> service: updatePerceivedLevel(targetUserId)
+
+service -> db: SELECT AVG(suggested_level)\nFROM feedbacks\nWHERE target_user_id = ?
+db --> service: avgLevel
+
+service -> db: UPDATE users\nSET perceived_level = ?
+db --> service: void
+
+service --> web: Feedback
+deactivate service
+
+web --> player: ResponseEntity<Feedback>
+deactivate web
+
+note over player, db
+  Design Patterns applicati:
+  
+  1. **Observer**: MatchEventListener ascolta MatchConfirmedEvent
+  2. **Strategy**: MatchService usa diverse strategie di ordinamento
+  3. **Singleton**: NotificationService è unica istanza
+end note
+
+@enduml
