@@ -21,7 +21,11 @@
 
         <h2>Crea Nuova Partita</h2>
 
-        <form class="form-simple" th:action="@{/api/matches}" method="post" th:object="${matchRequest}">
+        <div th:if="${error}" class="alert alert-error" style="background: #fee; border-left: 4px solid #c33; padding: 1rem; margin-bottom: 1rem;">
+            <p th:text="${error}"></p>
+        </div>
+
+        <form class="form-simple" th:action="@{/matches/create}" method="post" th:object="${matchRequest}">
             <div class="form-group">
                 <label for="location">Luogo</label>
                 <input type="text" id="location" th:field="*{location}" 

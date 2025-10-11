@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Partita - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Gestione partite tra sconosciuti</p>
+        </div>
+        
+        <nav class="nav-simple">
+            <a th:href="@{/}">Home</a>
+            <a th:href="@{/matches}">Partite</a>
+            <a th:href="@{/matches/create}">Crea Partita</a>
+        </nav>
+
+        <h2>Dai Feedback ai Giocatori</h2>
+
+        <div class="info-box" style="margin-bottom: 1.5rem;">
+            <h4 th:text="'Partita: ' + ${match.location}">Partita</h4>
+            <p th:text="'Data: ' + ${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data</p>
+            <p th:text="'Giocatori: ' + ${players.size()}">Giocatori</p>
+        </div>
+
+        <div th:if="${success}" class="alert alert-success" style="background: #efe; border-left: 4px solid #3c3; padding: 1rem; margin-bottom: 1rem;">
+            <p th:text="${success}"></p>
+        </div>
+
+        <div th:if="${error}" class="alert alert-error" style="background: #fee; border-left: 4px solid #c33; padding: 1rem; margin-bottom: 1rem;">
+            <p th:text="${error}"></p>
+        </div>
+
+        <form class="form-simple" th:action="@{/matches/{id}/feedback(id=${match.id})}" method="post">
+            <div class="form-group">
+                <label for="authorId">Tu sei (Chi dà il feedback)</label>
+                <select id="authorId" name="authorId" required>
+                    <option value="">Seleziona il tuo nome</option>
+                    <option th:each="user : ${users}" 
+                            th:value="${user.id}" 
+                            th:text="${user.firstName + ' ' + user.lastName}">Utente</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="targetUserId">Valuta il giocatore</label>
+                <select id="targetUserId" name="targetUserId" required>
+                    <option value="">Seleziona il giocatore da valutare</option>
+                    <option th:each="player : ${players}" 
+                            th:value="${player.id}" 
+                            th:text="${player.firstName + ' ' + player.lastName + ' (Livello dichiarato: ' + player.declaredLevel.displayName + ')'}">Giocatore</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="suggestedLevel">Livello suggerito (in base alla sua performance)</label>
+                <select id="suggestedLevel" name="suggestedLevel" required>
+                    <option value="">Seleziona livello</option>
+                    <option th:each="level : ${levels}" 
+                            th:value="${level.name()}" 
+                            th:text="${level.displayName}">Livello</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="comment">Commento (opzionale)</label>
+                <textarea id="comment" name="comment" 
+                          rows="3" placeholder="Aggiungi un commento sulla performance..."></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success btn-lg">Invia Feedback</button>
+                <a th:href="@{/matches}" class="btn btn-secondary">Torna alle Partite</a>
+            </div>
+        </form>
+
+        <div class="info-box" style="margin-top: 2rem;">
+            <h4>ℹ️ Come funziona</h4>
+            <ul>
+                <li>Puoi dare feedback solo a partite terminate</li>
+                <li>Un feedback per giocatore per partita</li>
+                <li>Il livello percepito viene calcolato automaticamente dalla media dei feedback ricevuti</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>App Padel - Progetto Ingegneria del Software 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -21,13 +21,22 @@
 
         <h2>Lista Partite</h2>
 
+        <div th:if="${success}" class="alert alert-success" style="background: #efe; border-left: 4px solid #3c3; padding: 1rem; margin-bottom: 1rem;">
+            <p th:text="${success}"></p>
+        </div>
+
+        <div th:if="${error}" class="alert alert-error" style="background: #fee; border-left: 4px solid #c33; padding: 1rem; margin-bottom: 1rem;">
+            <p th:text="${error}"></p>
+        </div>
+
         <div class="filter-simple">
-            <label for="status">Filtra:</label>
-            <select id="status" onchange="window.location.href='/matches?status=' + this.value">
-                <option value="">Tutte le partite</option>
-                <option value="WAITING" th:selected="${status == 'WAITING'}">In Attesa</option>
-                <option value="CONFIRMED" th:selected="${status == 'CONFIRMED'}">Confermate</option>
-                <option value="FINISHED" th:selected="${status == 'FINISHED'}">Terminate</option>
+            <label for="level">Filtra per livello:</label>
+            <select id="level" onchange="window.location.href='/matches?level=' + this.value">
+                <option value="">Tutti i livelli</option>
+                <option value="PRINCIPIANTE" th:selected="${level == 'PRINCIPIANTE'}">Principiante</option>
+                <option value="INTERMEDIO" th:selected="${level == 'INTERMEDIO'}">Intermedio</option>
+                <option value="AVANZATO" th:selected="${level == 'AVANZATO'}">Avanzato</option>
+                <option value="PROFESSIONISTA" th:selected="${level == 'PROFESSIONISTA'}">Professionista</option>
             </select>
         </div>
 
@@ -60,15 +69,44 @@
                 </div>
                 
                 <div class="match-actions">
+                    <!-- Join form per partite in attesa -->
                     <form th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount < 4}" 
-                          th:action="@{/api/matches/{id}/join(id=${match.id})}" 
+                          th:action="@{/matches/{id}/join(id=${match.id})}" 
                           method="post" style="display: inline;">
-                        <input type="hidden" name="userId" value="1"/>
+                        <select name="userId" required style="padding: 0.5rem; margin-right: 0.5rem;">
+                            <option value="">Seleziona utente</option>
+                            <option th:each="user : ${@userService.getAllUsers()}" 
+                                    th:value="${user.id}" 
+                                    th:text="${user.firstName + ' ' + user.lastName}">Utente</option>
+                        </select>
                         <button type="submit" class="btn btn-success">Unisciti</button>
                     </form>
                     
-                    <span th:if="${match.activeRegistrationsCount >= 4}" class="badge badge-full">Completa</span>
-                    <span th:if="${match.status.name() == 'CONFIRMED'}" class="badge badge-success">Confermata</span>
+                    <!-- Leave form per partite in attesa -->
+                    <form th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount > 0}" 
+                          th:action="@{/matches/{id}/leave(id=${match.id})}" 
+                          method="post" style="display: inline; margin-left: 0.5rem;">
+                        <select name="userId" required style="padding: 0.5rem; margin-right: 0.5rem;">
+                            <option value="">Seleziona utente</option>
+                            <option th:each="user : ${@userService.getAllUsers()}" 
+                                    th:value="${user.id}" 
+                                    th:text="${user.firstName + ' ' + user.lastName}">Utente</option>
+                        </select>
+                        <button type="submit" class="btn btn-secondary">Esci</button>
+                    </form>
+                    
+                    <!-- Finish match per partite confermate -->
+                    <form th:if="${match.status.name() == 'CONFIRMED'}" 
+                          th:action="@{/matches/{id}/finish(id=${match.id})}" 
+                          method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-primary">Termina Partita</button>
+                    </form>
+                    
+                    <!-- Badges di stato -->
+                    <span th:if="${match.activeRegistrationsCount >= 4 and match.status.name() == 'WAITING'}" class="badge badge-full">Completa (in attesa conferma)</span>
+                    <span th:if="${match.status.name() == 'FINISHED'}" class="badge badge-info">
+                        ✅ Terminata - <a th:href="@{/matches/{id}/feedback(id=${match.id})}" style="color: white; text-decoration: underline;">Dai Feedback</a>
+                    </span>
                 </div>
             </div>
         </div>

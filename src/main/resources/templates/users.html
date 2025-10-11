@@ -35,10 +35,26 @@
                 <div class="user-info">
                     <p>👤 <span th:text="${user.username}">username</span></p>
                     <p>📧 <span th:text="${user.email}">email</span></p>
-                    <p>🎾 <strong><span th:text="${user.matchesPlayed}">0</span></strong> partite</p>
-                    <p th:if="${user.perceivedLevel != null}">
-                        ⭐ Livello percepito: <span th:text="${user.perceivedLevel.displayName}">-</span>
-                    </p>
+                    <p>🎾 <strong><span th:text="${user.matchesPlayed}">0</span></strong> partite giocate</p>
+                    
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
+                        <p style="margin: 0.25rem 0;">
+                            <strong>📝 Dichiarato:</strong> <span th:text="${user.declaredLevel.displayName}">-</span>
+                        </p>
+                        <p th:if="${user.perceivedLevel != null}" style="margin: 0.25rem 0;">
+                            <strong>⭐ Percepito:</strong> 
+                            <span th:text="${user.perceivedLevel.displayName}">-</span>
+                            <span th:if="${user.perceivedLevel.ordinal() > user.declaredLevel.ordinal()}" 
+                                  style="color: #28a745;">↑ Sopra le aspettative</span>
+                            <span th:if="${user.perceivedLevel.ordinal() == user.declaredLevel.ordinal()}" 
+                                  style="color: #007bff;">✓ Corretto</span>
+                            <span th:if="${user.perceivedLevel.ordinal() < user.declaredLevel.ordinal()}" 
+                                  style="color: #dc3545;">↓ Sotto le aspettative</span>
+                        </p>
+                        <p th:if="${user.perceivedLevel == null}" style="margin: 0.25rem 0; color: #666;">
+                            <strong>⭐ Percepito:</strong> <em>Nessun feedback ricevuto</em>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
