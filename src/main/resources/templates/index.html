@@ -3,58 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Padel - Home</title>
+    <title>Home - App Padel</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🎾 App Padel</h1>
-            <p>Gestione partite tra sconosciuti</p>
+            <p>Benvenuta, <strong th:text="${currentUser.firstName + ' ' + currentUser.lastName}">Margherita Biffi</strong></p>
+            <p style="color: #666; font-size: 0.9rem;">
+                Livello dichiarato: <span th:text="${currentUser.declaredLevel.displayName}">Intermedio</span> |
+                Partite giocate: <span th:text="${currentUser.matchesPlayed}">0</span>
+            </p>
         </div>
         
         <nav class="nav-simple">
-            <a th:href="@{/}">Home</a>
-            <a th:href="@{/matches}">Partite</a>
+            <a th:href="@{/}" class="active">Home</a>
+            <a th:href="@{/my-matches}">Le Mie Partite</a>
             <a th:href="@{/matches/create}">Crea Partita</a>
         </nav>
 
-        <div class="stats-compact">
-            <div class="stat-item">
-                <span class="stat-num" th:text="${totalMatches}">0</span>
-                <span class="stat-lbl">Partite</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-num" th:text="${waitingMatches}">0</span>
-                <span class="stat-lbl">In Attesa</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-num" th:text="${confirmedMatches}">0</span>
-                <span class="stat-lbl">Confermate</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-num" th:text="${totalUsers}">0</span>
-                <span class="stat-lbl">Utenti</span>
-            </div>
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <h2>Partite Disponibili</h2>
+        <p style="color: #666; margin-bottom: 1.5rem;">Iscriviti alle partite programmate dai padel club</p>
+
+        <div class="empty-state" th:if="${availableMatches.empty}">
+            <p>🎾 Nessuna partita disponibile al momento</p>
+            <a th:href="@{/matches/create}" class="btn btn-primary">Crea una nuova partita</a>
         </div>
 
-        <div class="actions-grid">
-            <div class="action-card">
-                <h2>🎾 Unisciti a una Partita</h2>
-                <p>Trova partite disponibili e unisciti</p>
-                <a href="/matches" class="btn btn-lg btn-primary">Vedi Partite</a>
-            </div>
-            
-            <div class="action-card">
-                <h2>➕ Organizza una Partita</h2>
-                <p>Crea una nuova partita e invita altri</p>
-                <a href="/matches/create" class="btn btn-lg btn-success">Crea Partita</a>
-            </div>
-            
-            <div class="action-card">
-                <h2>👥 Community</h2>
-                <p>Scopri i giocatori della community</p>
-                <a href="/users" class="btn btn-lg btn-secondary">Vedi Giocatori</a>
+        <div class="match-list" th:if="${!availableMatches.empty}">
+            <div class="match-card" th:each="match : ${availableMatches}">
+                <div class="match-header">
+                    <h3 th:text="${match.location}">Luogo</h3>
+                    <span class="status-badge" th:classappend="${match.status.name()}" 
+                          th:text="${match.status.displayName}">Stato</span>
+                </div>
+                
+                <div class="match-details">
+                    <p>📅 <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data e ora</span></p>
+                    <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
+                    <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
+                    <p>
+                        <strong>Giocatori: <span th:text="${match.activeRegistrationsCount}">0</span>/4</strong>
+                        <span class="progress-bar">
+                            <span class="progress-fill" th:style="'width: ' + ${match.activeRegistrationsCount * 25} + '%'"></span>
+                        </span>
+                    </p>
+                </div>
+
+                <div class="match-actions">
+                    <form th:action="@{/matches/{id}/join(id=${match.id})}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-primary" 
+                                th:disabled="${match.activeRegistrationsCount >= 4}">
+                            <span th:if="${match.activeRegistrationsCount < 4}">Iscriviti</span>
+                            <span th:if="${match.activeRegistrationsCount >= 4}">Completa</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 

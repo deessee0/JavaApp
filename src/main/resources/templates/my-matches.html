@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Mie Partite - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Le mie partite e feedback</p>
+        </div>
+        
+        <nav class="nav-simple">
+            <a th:href="@{/}">Home</a>
+            <a th:href="@{/my-matches}" class="active">Le Mie Partite</a>
+            <a th:href="@{/matches/create}">Crea Partita</a>
+        </nav>
+
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <!-- Partite a cui sono iscritta -->
+        <section style="margin-bottom: 2rem;">
+            <h2>📅 Partite a cui sono iscritta</h2>
+            
+            <div class="empty-state" th:if="${registeredMatches.empty}">
+                <p>Nessuna iscrizione attiva</p>
+                <a th:href="@{/}" class="btn btn-primary">Cerca partite disponibili</a>
+            </div>
+
+            <div class="match-list" th:if="${!registeredMatches.empty}">
+                <div class="match-card" th:each="match : ${registeredMatches}">
+                    <div class="match-header">
+                        <h3 th:text="${match.location}">Luogo</h3>
+                        <span class="status-badge" th:classappend="${match.status.name()}" 
+                              th:text="${match.status.displayName}">Stato</span>
+                    </div>
+                    
+                    <div class="match-details">
+                        <p>📅 <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data e ora</span></p>
+                        <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
+                        <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
+                        <p>
+                            <strong>Giocatori: <span th:text="${match.activeRegistrationsCount}">0</span>/4</strong>
+                            <span class="progress-bar">
+                                <span class="progress-fill" th:style="'width: ' + ${match.activeRegistrationsCount * 25} + '%'"></span>
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="match-actions">
+                        <form th:action="@{/matches/{id}/leave(id=${match.id})}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-danger">Disiscrivi</button>
+                        </form>
+                        <form th:if="${match.status.name() == 'CONFIRMED'}" 
+                              th:action="@{/matches/{id}/finish(id=${match.id})}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-secondary">Termina Partita</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Storico partite giocate -->
+        <section style="margin-bottom: 2rem;">
+            <h2>🏁 Storico partite giocate</h2>
+            
+            <div class="empty-state" th:if="${finishedMatches.empty}">
+                <p>Nessuna partita completata</p>
+            </div>
+
+            <div class="match-list" th:if="${!finishedMatches.empty}">
+                <div class="match-card" th:each="match : ${finishedMatches}">
+                    <div class="match-header">
+                        <h3 th:text="${match.location}">Luogo</h3>
+                        <span class="status-badge FINISHED">Terminata</span>
+                    </div>
+                    
+                    <div class="match-details">
+                        <p>📅 <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data e ora</span></p>
+                        <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
+                        <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
+                    </div>
+
+                    <div class="match-actions">
+                        <a th:href="@{/matches/{id}/feedback(id=${match.id})}" class="btn btn-primary">Dai Feedback</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feedback ricevuti -->
+        <section style="margin-bottom: 2rem;">
+            <h2>⭐ Feedback ricevuti</h2>
+            
+            <div class="empty-state" th:if="${feedbackReceived.empty}">
+                <p>Nessun feedback ricevuto</p>
+            </div>
+
+            <div class="feedback-list" th:if="${!feedbackReceived.empty}">
+                <div class="feedback-card" th:each="feedback : ${feedbackReceived}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong th:text="${feedback.author.firstName + ' ' + feedback.author.lastName}">Nome</strong>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0;">
+                                Partita: <span th:text="${feedback.match.location}">Luogo</span> - 
+                                <span th:text="${#temporals.format(feedback.match.dateTime, 'dd/MM/yyyy')}">Data</span>
+                            </p>
+                        </div>
+                        <span class="level-tag" th:text="${feedback.suggestedLevel.displayName}">Livello</span>
+                    </div>
+                    <p th:if="${feedback.comment}" style="margin-top: 0.5rem; font-style: italic;">
+                        "<span th:text="${feedback.comment}">Commento</span>"
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feedback dati -->
+        <section>
+            <h2>📝 Feedback che ho dato</h2>
+            
+            <div class="empty-state" th:if="${feedbackGiven.empty}">
+                <p>Non hai ancora dato feedback</p>
+            </div>
+
+            <div class="feedback-list" th:if="${!feedbackGiven.empty}">
+                <div class="feedback-card" th:each="feedback : ${feedbackGiven}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong>A: <span th:text="${feedback.targetUser.firstName + ' ' + feedback.targetUser.lastName}">Nome</span></strong>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0;">
+                                Partita: <span th:text="${feedback.match.location}">Luogo</span> - 
+                                <span th:text="${#temporals.format(feedback.match.dateTime, 'dd/MM/yyyy')}">Data</span>
+                            </p>
+                        </div>
+                        <span class="level-tag" th:text="${feedback.suggestedLevel.displayName}">Livello</span>
+                    </div>
+                    <p th:if="${feedback.comment}" style="margin-top: 0.5rem; font-style: italic;">
+                        "<span th:text="${feedback.comment}">Commento</span>"
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>App Padel - Progetto Ingegneria del Software 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

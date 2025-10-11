@@ -15,11 +15,12 @@
         
         <nav class="nav-simple">
             <a th:href="@{/}">Home</a>
-            <a th:href="@{/matches}">Partite</a>
+            <a th:href="@{/my-matches}">Le Mie Partite</a>
             <a th:href="@{/matches/create}">Crea Partita</a>
         </nav>
 
         <h2>Dai Feedback ai Giocatori</h2>
+        <p style="color: #666; margin-bottom: 1.5rem;">Valuta i giocatori con cui hai giocato</p>
 
         <div class="info-box" style="margin-bottom: 1.5rem;">
             <h4 th:text="'Partita: ' + ${match.location}">Partita</h4>
@@ -36,16 +37,6 @@
         </div>
 
         <form class="form-simple" th:action="@{/matches/{id}/feedback(id=${match.id})}" method="post">
-            <div class="form-group">
-                <label for="authorId">Tu sei (Chi dà il feedback)</label>
-                <select id="authorId" name="authorId" required>
-                    <option value="">Seleziona il tuo nome</option>
-                    <option th:each="user : ${users}" 
-                            th:value="${user.id}" 
-                            th:text="${user.firstName + ' ' + user.lastName}">Utente</option>
-                </select>
-            </div>
-
             <div class="form-group">
                 <label for="targetUserId">Valuta il giocatore</label>
                 <select id="targetUserId" name="targetUserId" required>
@@ -74,7 +65,7 @@
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-success btn-lg">Invia Feedback</button>
-                <a th:href="@{/matches}" class="btn btn-secondary">Torna alle Partite</a>
+                <a th:href="@{/my-matches}" class="btn btn-secondary">Torna alle Mie Partite</a>
             </div>
         </form>
 

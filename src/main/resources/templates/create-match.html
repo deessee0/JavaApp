@@ -15,11 +15,12 @@
         
         <nav class="nav-simple">
             <a th:href="@{/}">Home</a>
-            <a th:href="@{/matches}">Partite</a>
-            <a th:href="@{/matches/create}">Crea Partita</a>
+            <a th:href="@{/my-matches}">Le Mie Partite</a>
+            <a th:href="@{/matches/create}" class="active">Crea Partita</a>
         </nav>
 
         <h2>Crea Nuova Partita</h2>
+        <p style="color: #666; margin-bottom: 1.5rem;">Verrai automaticamente iscritta alla partita che crei</p>
 
         <div th:if="${error}" class="alert alert-error" style="background: #fee; border-left: 4px solid #c33; padding: 1rem; margin-bottom: 1rem;">
             <p th:text="${error}"></p>
@@ -54,17 +55,18 @@
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn-success btn-lg">Crea Partita</button>
-                <a th:href="@{/matches}" class="btn btn-secondary">Annulla</a>
+                <button type="submit" class="btn btn-success btn-lg">Crea e Iscriviti</button>
+                <a th:href="@{/}" class="btn btn-secondary">Annulla</a>
             </div>
         </form>
 
         <div class="info-box">
-            <h4>Come funziona</h4>
+            <h4>ℹ️ Come funziona</h4>
             <ul>
-                <li>La partita inizia con stato "In Attesa"</li>
-                <li>Massimo 4 giocatori</li>
-                <li>Conferma automatica al 4° giocatore</li>
+                <li>✅ Verrai automaticamente iscritta come prima giocatrice</li>
+                <li>⏳ La partita inizia con stato "In Attesa"</li>
+                <li>👥 Servono 3 altri giocatori per confermare (totale 4)</li>
+                <li>🎯 Conferma automatica quando il 4° giocatore si iscrive</li>
             </ul>
         </div>
 
