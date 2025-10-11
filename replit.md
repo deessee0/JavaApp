@@ -131,6 +131,13 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
+- 2025-10-11: **COMPLETAMENTO UI** - Sistemati tutti i bug UI e semplificata architettura
+  - Fix form Crea Partita: aggiunto matchRequest al Model + POST handler in WebController
+  - Architettura semplificata: eliminato MatchController REST ridondante, tutto in WebController
+  - Fix filtro partite: corretto per usare `level` invece di `status` nel template
+  - Pagina feedback completa: form funzionante per dare feedback post-partita
+  - Pulsante "Termina Partita": aggiunto per partite confermate
+  - Pagina utenti migliorata: confronto visuale dichiarato vs percepito con indicatori (✓↑↓)
 - 2025-10-10: **FASE 1** - UI semplificata e ottimizzata per demo rapida
 - 2025-10-10: **FASE 2** - Documentazione completa con UML diagrams
 - 2025-10-10: **FASE 3** - Unit test scenario-based con coverage 56.7%
