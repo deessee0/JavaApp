@@ -3,10 +3,12 @@ package com.example.padel_app.config;
 import com.example.padel_app.model.Match;
 import com.example.padel_app.model.Registration;
 import com.example.padel_app.model.User;
+import com.example.padel_app.model.Feedback;
 import com.example.padel_app.model.enums.*;
 import com.example.padel_app.repository.MatchRepository;
 import com.example.padel_app.repository.RegistrationRepository;
 import com.example.padel_app.repository.UserRepository;
+import com.example.padel_app.repository.FeedbackRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -23,13 +25,17 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final MatchRepository matchRepository;
     private final RegistrationRepository registrationRepository;
+    private final FeedbackRepository feedbackRepository;
     
     @Override
     @Transactional
     public void run(String... args) {
         log.info("🎾 Inizializzazione dati demo per App Padel...");
         
-        // Crea utenti demo
+        // Crea utente principale (simulato come loggato)
+        User margherita = createUser("margherita", "margherita.biffi@padel.it", "Margherita", "Biffi", Level.INTERMEDIO);
+        
+        // Crea altri utenti demo per partite
         User mario = createUser("mario", "mario@padel.it", "Mario", "Rossi", Level.INTERMEDIO);
         User lucia = createUser("lucia", "lucia@padel.it", "Lucia", "Bianchi", Level.AVANZATO);
         User giuseppe = createUser("giuseppe", "giuseppe@padel.it", "Giuseppe", "Verdi", Level.PRINCIPIANTE);
@@ -37,78 +43,159 @@ public class DataSeeder implements CommandLineRunner {
         User francesco = createUser("francesco", "francesco@padel.it", "Francesco", "Bruno", Level.INTERMEDIO);
         User sara = createUser("sara", "sara@padel.it", "Sara", "Ferrari", Level.AVANZATO);
         
-        // Crea partite demo
-        Match partita1 = createMatch(
-            "Centro Sportivo Milano", 
-            "Partita serale", 
-            Level.INTERMEDIO,
-            MatchType.PROPOSTA,
-            MatchStatus.WAITING,
-            LocalDateTime.now().plusDays(2).withHour(19).withMinute(30),
-            mario
-        );
+        // === PARTITE DISPONIBILI (Margherita NON iscritta) ===
         
-        Match partita2 = createMatch(
+        // Partita fissa intermedio - lunedì 18:00
+        Match disponibile1 = createMatch(
+            "Centro Sportivo Milano", 
+            "Partita fissa serale intermedi", 
+            Level.INTERMEDIO,
+            MatchType.FISSA,
+            MatchStatus.WAITING,
+            LocalDateTime.now().plusDays(1).withHour(18).withMinute(0),
+            null
+        );
+        createRegistration(mario, disponibile1);
+        createRegistration(francesco, disponibile1);
+        
+        // Partita fissa avanzato - mercoledì 10:00
+        Match disponibile2 = createMatch(
             "Padel Club Roma", 
-            "Allenamento mattutino", 
+            "Allenamento mattutino avanzati", 
             Level.AVANZATO,
             MatchType.FISSA,
-            MatchStatus.CONFIRMED,
+            MatchStatus.WAITING,
             LocalDateTime.now().plusDays(3).withHour(10).withMinute(0),
-            lucia
+            null
         );
+        createRegistration(lucia, disponibile2);
         
-        Match partita3 = createMatch(
+        // Partita fissa principianti - giovedì 16:00
+        Match disponibile3 = createMatch(
             "Sport Center Torino", 
             "Partita principianti", 
             Level.PRINCIPIANTE,
-            MatchType.PROPOSTA,
+            MatchType.FISSA,
             MatchStatus.WAITING,
-            LocalDateTime.now().plusDays(1).withHour(16).withMinute(0),
-            giuseppe
+            LocalDateTime.now().plusDays(4).withHour(16).withMinute(0),
+            null
         );
         
-        Match partita4 = createMatch(
+        // Partita fissa professionisti - venerdì 20:00
+        Match disponibile4 = createMatch(
             "Padel Arena Napoli", 
-            "Torneo amichevole", 
+            "Torneo professionisti", 
             Level.PROFESSIONISTA,
             MatchType.FISSA,
-            MatchStatus.FINISHED,
-            LocalDateTime.now().minusDays(2).withHour(18).withMinute(0),
-            anna
+            MatchStatus.WAITING,
+            LocalDateTime.now().plusDays(5).withHour(20).withMinute(0),
+            null
+        );
+        createRegistration(anna, disponibile4);
+        
+        // Partita VUOTA - sabato 14:00
+        Match disponibile5 = createMatch(
+            "Padel Club Monza", 
+            "Partita pomeridiana", 
+            Level.INTERMEDIO,
+            MatchType.FISSA,
+            MatchStatus.WAITING,
+            LocalDateTime.now().plusDays(6).withHour(14).withMinute(0),
+            null
         );
         
-        // Crea registrazioni demo
-        createRegistration(mario, partita1);
-        createRegistration(francesco, partita1);
+        // === PARTITE A CUI MARGHERITA È ISCRITTA ===
         
-        createRegistration(lucia, partita2);
-        createRegistration(anna, partita2);
-        createRegistration(sara, partita2);
-        createRegistration(francesco, partita2);
+        // Partita proposta da Margherita (WAITING - 2 giocatori)
+        Match iscritta1 = createMatch(
+            "Tennis Club Bergamo", 
+            "Partita intermedi domani sera", 
+            Level.INTERMEDIO,
+            MatchType.PROPOSTA,
+            MatchStatus.WAITING,
+            LocalDateTime.now().plusDays(1).withHour(19).withMinute(30),
+            margherita
+        );
+        createRegistration(margherita, iscritta1);
+        createRegistration(sara, iscritta1);
         
-        createRegistration(giuseppe, partita3);
-        createRegistration(mario, partita3);
+        // Partita confermata con Margherita (CONFIRMED - 4 giocatori)
+        Match iscritta2 = createMatch(
+            "Padel Arena Milano", 
+            "Partita confermata sabato", 
+            Level.INTERMEDIO,
+            MatchType.FISSA,
+            MatchStatus.CONFIRMED,
+            LocalDateTime.now().plusDays(6).withHour(10).withMinute(0),
+            null
+        );
+        createRegistration(margherita, iscritta2);
+        createRegistration(mario, iscritta2);
+        createRegistration(francesco, iscritta2);
+        createRegistration(sara, iscritta2);
         
-        createRegistration(anna, partita4);
-        createRegistration(lucia, partita4);
-        createRegistration(sara, partita4);
-        createRegistration(francesco, partita4);
+        // === PARTITE CHE MARGHERITA HA GIÀ GIOCATO (FINISHED) ===
+        
+        // Partita giocata 1 settimana fa
+        Match giocata1 = createMatch(
+            "Centro Sportivo Milano", 
+            "Partita intermedi", 
+            Level.INTERMEDIO,
+            MatchType.FISSA,
+            MatchStatus.FINISHED,
+            LocalDateTime.now().minusDays(7).withHour(18).withMinute(0),
+            null
+        );
+        createRegistration(margherita, giocata1);
+        createRegistration(mario, giocata1);
+        createRegistration(lucia, giocata1);
+        createRegistration(francesco, giocata1);
+        
+        // Feedback per partita giocata 1
+        createFeedback(margherita, mario, giocata1, Level.INTERMEDIO, "Ottimo compagno, livello corretto");
+        createFeedback(margherita, lucia, giocata1, Level.AVANZATO, "Molto brava, sopra il suo livello");
+        createFeedback(mario, margherita, giocata1, Level.INTERMEDIO, "Buon gioco, livello confermato");
+        createFeedback(lucia, margherita, giocata1, Level.INTERMEDIO, "Brava, livello corretto");
+        
+        // Partita giocata 3 giorni fa
+        Match giocata2 = createMatch(
+            "Padel Club Roma", 
+            "Allenamento serale", 
+            Level.INTERMEDIO,
+            MatchType.FISSA,
+            MatchStatus.FINISHED,
+            LocalDateTime.now().minusDays(3).withHour(20).withMinute(0),
+            null
+        );
+        createRegistration(margherita, giocata2);
+        createRegistration(giuseppe, giocata2);
+        createRegistration(anna, giocata2);
+        createRegistration(sara, giocata2);
+        
+        // Feedback per partita giocata 2
+        createFeedback(margherita, giuseppe, giocata2, Level.PRINCIPIANTE, "Ha bisogno di più pratica");
+        createFeedback(margherita, anna, giocata2, Level.PROFESSIONISTA, "Eccellente giocatrice");
+        createFeedback(anna, margherita, giocata2, Level.AVANZATO, "Ben giocato, sopra le aspettative");
+        createFeedback(sara, margherita, giocata2, Level.INTERMEDIO, "Livello confermato");
         
         // Aggiorna contatori partite giocate
-        anna.setMatchesPlayed(5);
-        lucia.setMatchesPlayed(3);
-        sara.setMatchesPlayed(4);
-        francesco.setMatchesPlayed(2);
-        mario.setMatchesPlayed(1);
-        giuseppe.setMatchesPlayed(0);
+        margherita.setMatchesPlayed(2);
+        margherita.setPerceivedLevel(Level.INTERMEDIO); // Media feedback ricevuti
         
-        userRepository.save(anna);
-        userRepository.save(lucia);
-        userRepository.save(sara);
-        userRepository.save(francesco);
+        mario.setMatchesPlayed(1);
+        lucia.setMatchesPlayed(1);
+        giuseppe.setMatchesPlayed(1);
+        anna.setMatchesPlayed(1);
+        francesco.setMatchesPlayed(0);
+        sara.setMatchesPlayed(1);
+        
+        userRepository.save(margherita);
         userRepository.save(mario);
+        userRepository.save(lucia);
         userRepository.save(giuseppe);
+        userRepository.save(anna);
+        userRepository.save(francesco);
+        userRepository.save(sara);
         
         log.info("✅ Dati demo caricati: {} utenti, {} partite, {} registrazioni", 
                  userRepository.count(), matchRepository.count(), registrationRepository.count());
@@ -148,5 +235,16 @@ public class DataSeeder implements CommandLineRunner {
         registration.setStatus(RegistrationStatus.JOINED);
         registration.setRegisteredAt(LocalDateTime.now());
         return registrationRepository.save(registration);
+    }
+    
+    private Feedback createFeedback(User author, User targetUser, Match match, Level suggestedLevel, String comment) {
+        Feedback feedback = new Feedback();
+        feedback.setAuthor(author);
+        feedback.setTargetUser(targetUser);
+        feedback.setMatch(match);
+        feedback.setSuggestedLevel(suggestedLevel);
+        feedback.setComment(comment);
+        feedback.setCreatedAt(LocalDateTime.now());
+        return feedbackRepository.save(feedback);
     }
 }
