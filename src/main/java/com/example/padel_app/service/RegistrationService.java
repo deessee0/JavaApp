@@ -39,6 +39,14 @@ public class RegistrationService {
         return registrationRepository.existsByUserAndMatch(user, match);
     }
     
+    public boolean isUserRegistered(User user, Match match) {
+        return registrationRepository.existsByUserAndMatch(user, match);
+    }
+    
+    public List<Registration> getActiveRegistrationsByUser(User user) {
+        return registrationRepository.findByUserAndStatus(user, RegistrationStatus.JOINED);
+    }
+    
     // Business logic: Join match with constraints
     @Transactional
     public Registration joinMatch(User user, Match match) {

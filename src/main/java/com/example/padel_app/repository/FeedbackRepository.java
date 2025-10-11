@@ -13,8 +13,10 @@ import java.util.Optional;
 @Repository
 public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     
+    @Query("SELECT f FROM Feedback f JOIN FETCH f.author JOIN FETCH f.targetUser WHERE f.author = :author")
     List<Feedback> findByAuthor(User author);
     
+    @Query("SELECT f FROM Feedback f JOIN FETCH f.author JOIN FETCH f.targetUser WHERE f.targetUser = :targetUser")
     List<Feedback> findByTargetUser(User targetUser);
     
     List<Feedback> findByMatch(Match match);

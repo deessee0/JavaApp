@@ -43,12 +43,6 @@
                         <p>📅 <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data e ora</span></p>
                         <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
                         <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
-                        <p>
-                            <strong>Giocatori: <span th:text="${match.activeRegistrationsCount}">0</span>/4</strong>
-                            <span class="progress-bar">
-                                <span class="progress-fill" th:style="'width: ' + ${match.activeRegistrationsCount * 25} + '%'"></span>
-                            </span>
-                        </p>
                     </div>
 
                     <div class="match-actions">

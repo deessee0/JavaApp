@@ -45,6 +45,7 @@ public class WebController {
     }
     
     @GetMapping("/my-matches")
+    @Transactional(readOnly = true)
     public String myMatches(Model model) {
         User currentUser = userContext.getCurrentUser();
         

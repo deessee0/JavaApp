@@ -86,6 +86,10 @@ public class FeedbackService {
         return feedbackRepository.findByTargetUser(user);
     }
     
+    public List<Feedback> getFeedbacksByAuthor(User user) {
+        return feedbackRepository.findByAuthor(user);
+    }
+    
     public List<Feedback> getFeedbacksByMatch(Match match) {
         return feedbackRepository.findByMatch(match);
     }
