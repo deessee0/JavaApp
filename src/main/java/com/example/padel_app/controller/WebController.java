@@ -8,6 +8,7 @@ import com.example.padel_app.service.MatchService;
 import com.example.padel_app.service.RegistrationService;
 import com.example.padel_app.service.UserService;
 import com.example.padel_app.service.FeedbackService;
+import com.example.padel_app.service.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,21 +26,57 @@ public class WebController {
     private final UserService userService;
     private final RegistrationService registrationService;
     private final FeedbackService feedbackService;
+    private final UserContext userContext;
     
     @GetMapping("/")
     public String home(Model model) {
-        // Statistiche per la homepage
-        List<Match> allMatches = matchService.getAllMatches();
-        List<Match> waitingMatches = matchService.getMatchesByStatus(MatchStatus.WAITING);
-        List<Match> confirmedMatches = matchService.getMatchesByStatus(MatchStatus.CONFIRMED);
-        List<User> allUsers = userService.getAllUsers();
+        User currentUser = userContext.getCurrentUser();
         
-        model.addAttribute("totalMatches", allMatches.size());
-        model.addAttribute("waitingMatches", waitingMatches.size());
-        model.addAttribute("confirmedMatches", confirmedMatches.size());
-        model.addAttribute("totalUsers", allUsers.size());
+        // Partite disponibili (a cui Margherita NON è iscritta)
+        List<Match> availableMatches = matchService.getAllMatches().stream()
+            .filter(m -> m.getStatus() == MatchStatus.WAITING || m.getStatus() == MatchStatus.CONFIRMED)
+            .filter(m -> !registrationService.isUserRegistered(currentUser, m))
+            .collect(java.util.stream.Collectors.toList());
+        
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("availableMatches", availableMatches);
         
         return "index";
+    }
+    
+    @GetMapping("/my-matches")
+    public String myMatches(Model model) {
+        User currentUser = userContext.getCurrentUser();
+        
+        // Partite a cui sono iscritta (future)
+        List<Match> myRegisteredMatches = registrationService.getActiveRegistrationsByUser(currentUser).stream()
+            .map(com.example.padel_app.model.Registration::getMatch)
+            .filter(m -> m.getStatus() != MatchStatus.FINISHED)
+            .sorted((m1, m2) -> m1.getDateTime().compareTo(m2.getDateTime()))
+            .collect(java.util.stream.Collectors.toList());
+        
+        // Partite già giocate (passate)
+        List<Match> myFinishedMatches = registrationService.getActiveRegistrationsByUser(currentUser).stream()
+            .map(com.example.padel_app.model.Registration::getMatch)
+            .filter(m -> m.getStatus() == MatchStatus.FINISHED)
+            .sorted((m1, m2) -> m2.getDateTime().compareTo(m1.getDateTime()))
+            .collect(java.util.stream.Collectors.toList());
+        
+        // Feedback ricevuti da Margherita
+        List<com.example.padel_app.model.Feedback> feedbackReceived = 
+            feedbackService.getFeedbacksByTargetUser(currentUser);
+        
+        // Feedback dati da Margherita
+        List<com.example.padel_app.model.Feedback> feedbackGiven = 
+            feedbackService.getFeedbacksByAuthor(currentUser);
+        
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("registeredMatches", myRegisteredMatches);
+        model.addAttribute("finishedMatches", myFinishedMatches);
+        model.addAttribute("feedbackReceived", feedbackReceived);
+        model.addAttribute("feedbackGiven", feedbackGiven);
+        
+        return "my-matches";
     }
     
     @GetMapping("/matches")
@@ -81,17 +118,14 @@ public class WebController {
     public String createMatchForm(Model model) {
         model.addAttribute("matchRequest", new CreateMatchRequest());
         model.addAttribute("levels", Level.values());
-        model.addAttribute("users", userService.getAllUsers());
         return "create-match";
     }
     
     @PostMapping("/matches/create")
+    @Transactional
     public String createMatch(CreateMatchRequest request, Model model) {
         try {
-            // Usa il primo utente come creatore per semplicità
-            User creator = userService.getAllUsers().stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Nessun utente disponibile"));
+            User currentUser = userContext.getCurrentUser();
             
             Match match = new Match();
             match.setLocation(request.getLocation());
@@ -100,11 +134,15 @@ public class WebController {
             match.setType(com.example.padel_app.model.enums.MatchType.PROPOSTA);
             match.setStatus(MatchStatus.WAITING);
             match.setDateTime(java.time.LocalDateTime.parse(request.getDateTime()));
-            match.setCreator(creator);
+            match.setCreator(currentUser);
             match.setCreatedAt(java.time.LocalDateTime.now());
             
-            matchService.saveMatch(match);
-            return "redirect:/matches";
+            Match savedMatch = matchService.saveMatch(match);
+            
+            // Auto-iscrive il creatore alla partita
+            registrationService.joinMatch(currentUser, savedMatch);
+            
+            return "redirect:/my-matches";
             
         } catch (Exception e) {
             model.addAttribute("error", "Errore nella creazione della partita: " + e.getMessage());
@@ -116,44 +154,38 @@ public class WebController {
     
     // Join match
     @PostMapping("/matches/{id}/join")
-    public String joinMatch(@PathVariable Long id, 
-                           @RequestParam Long userId,
-                           RedirectAttributes redirectAttributes) {
+    public String joinMatch(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
+            User currentUser = userContext.getCurrentUser();
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
-            User user = userService.getUserById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Utente non trovato"));
             
-            registrationService.joinMatch(user, match);
-            redirectAttributes.addFlashAttribute("success", "Ti sei unito alla partita!");
+            registrationService.joinMatch(currentUser, match);
+            redirectAttributes.addFlashAttribute("success", "Ti sei iscritta alla partita!");
             
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         
-        return "redirect:/matches";
+        return "redirect:/";
     }
     
     // Leave match
     @PostMapping("/matches/{id}/leave")
-    public String leaveMatch(@PathVariable Long id,
-                            @RequestParam Long userId,
-                            RedirectAttributes redirectAttributes) {
+    public String leaveMatch(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
+            User currentUser = userContext.getCurrentUser();
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
-            User user = userService.getUserById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Utente non trovato"));
             
-            registrationService.leaveMatch(user, match);
-            redirectAttributes.addFlashAttribute("success", "Hai lasciato la partita!");
+            registrationService.leaveMatch(currentUser, match);
+            redirectAttributes.addFlashAttribute("success", "Ti sei disiscritto dalla partita!");
             
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         
-        return "redirect:/matches";
+        return "redirect:/my-matches";
     }
     
     // Finish match
@@ -174,22 +206,23 @@ public class WebController {
     // Feedback page
     @GetMapping("/matches/{id}/feedback")
     public String feedbackForm(@PathVariable Long id, Model model) {
+        User currentUser = userContext.getCurrentUser();
         Match match = matchService.getMatchById(id)
             .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
         
         if (match.getStatus() != MatchStatus.FINISHED) {
             model.addAttribute("error", "Puoi dare feedback solo a partite terminate");
-            return "redirect:/matches";
+            return "redirect:/my-matches";
         }
         
-        // Get players from registrations
+        // Get players from registrations (exclude current user)
         List<User> players = registrationService.getActiveRegistrationsByMatch(match).stream()
             .map(com.example.padel_app.model.Registration::getUser)
+            .filter(u -> !u.getId().equals(currentUser.getId()))
             .collect(java.util.stream.Collectors.toList());
         
         model.addAttribute("match", match);
         model.addAttribute("players", players);
-        model.addAttribute("users", userService.getAllUsers());
         model.addAttribute("levels", Level.values());
         
         return "feedback";
@@ -198,20 +231,18 @@ public class WebController {
     // Submit feedback
     @PostMapping("/matches/{id}/feedback")
     public String submitFeedback(@PathVariable Long id,
-                                 @RequestParam Long authorId,
                                  @RequestParam Long targetUserId,
                                  @RequestParam String suggestedLevel,
                                  @RequestParam(required = false) String comment,
                                  RedirectAttributes redirectAttributes) {
         try {
+            User currentUser = userContext.getCurrentUser();
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
-            User author = userService.getUserById(authorId)
-                .orElseThrow(() -> new IllegalArgumentException("Autore non trovato"));
             User targetUser = userService.getUserById(targetUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Utente target non trovato"));
             
-            feedbackService.createFeedback(author, targetUser, match, 
+            feedbackService.createFeedback(currentUser, targetUser, match, 
                 Level.valueOf(suggestedLevel), comment != null ? comment : "");
             
             redirectAttributes.addFlashAttribute("success", 
