@@ -16,6 +16,7 @@
         <nav class="nav-simple">
             <a th:href="@{/}">Home</a>
             <a th:href="@{/my-matches}" class="active">Le Mie Partite</a>
+            <a th:href="@{/my-profile}">Il Mio Profilo</a>
             <a th:href="@{/matches/create}">Crea Partita</a>
         </nav>
 
@@ -82,60 +83,6 @@
                     <div class="match-actions">
                         <a th:href="@{/matches/{id}/feedback(id=${match.id})}" class="btn btn-primary">Dai Feedback</a>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Feedback ricevuti -->
-        <section style="margin-bottom: 2rem;">
-            <h2>⭐ Feedback ricevuti</h2>
-            
-            <div class="empty-state" th:if="${feedbackReceived.empty}">
-                <p>Nessun feedback ricevuto</p>
-            </div>
-
-            <div class="feedback-list" th:if="${!feedbackReceived.empty}">
-                <div class="feedback-card" th:each="feedback : ${feedbackReceived}">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div>
-                            <strong th:text="${feedback.author.firstName + ' ' + feedback.author.lastName}">Nome</strong>
-                            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0;">
-                                Partita: <span th:text="${feedback.match.location}">Luogo</span> - 
-                                <span th:text="${#temporals.format(feedback.match.dateTime, 'dd/MM/yyyy')}">Data</span>
-                            </p>
-                        </div>
-                        <span class="level-tag" th:text="${feedback.suggestedLevel.displayName}">Livello</span>
-                    </div>
-                    <p th:if="${feedback.comment}" style="margin-top: 0.5rem; font-style: italic;">
-                        "<span th:text="${feedback.comment}">Commento</span>"
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Feedback dati -->
-        <section>
-            <h2>📝 Feedback che ho dato</h2>
-            
-            <div class="empty-state" th:if="${feedbackGiven.empty}">
-                <p>Non hai ancora dato feedback</p>
-            </div>
-
-            <div class="feedback-list" th:if="${!feedbackGiven.empty}">
-                <div class="feedback-card" th:each="feedback : ${feedbackGiven}">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div>
-                            <strong>A: <span th:text="${feedback.targetUser.firstName + ' ' + feedback.targetUser.lastName}">Nome</span></strong>
-                            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0;">
-                                Partita: <span th:text="${feedback.match.location}">Luogo</span> - 
-                                <span th:text="${#temporals.format(feedback.match.dateTime, 'dd/MM/yyyy')}">Data</span>
-                            </p>
-                        </div>
-                        <span class="level-tag" th:text="${feedback.suggestedLevel.displayName}">Livello</span>
-                    </div>
-                    <p th:if="${feedback.comment}" style="margin-top: 0.5rem; font-style: italic;">
-                        "<span th:text="${feedback.comment}">Commento</span>"
-                    </p>
                 </div>
             </div>
         </section>

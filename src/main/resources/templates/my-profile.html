@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Il Mio Profilo - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Il mio profilo e feedback</p>
+        </div>
+        
+        <nav class="nav-simple">
+            <a th:href="@{/}">Home</a>
+            <a th:href="@{/my-matches}">Le Mie Partite</a>
+            <a th:href="@{/my-profile}" class="active">Il Mio Profilo</a>
+            <a th:href="@{/matches/create}">Crea Partita</a>
+        </nav>
+
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <!-- Informazioni Utente -->
+        <section style="margin-bottom: 2rem;">
+            <div class="user-profile-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem;">
+                <h2 style="margin: 0 0 0.5rem 0; color: white;">
+                    <span th:text="${currentUser.firstName + ' ' + currentUser.lastName}">Nome Utente</span>
+                </h2>
+                <p style="margin: 0; opacity: 0.9;">
+                    👤 <span th:text="${currentUser.username}">username</span> | 
+                    📧 <span th:text="${currentUser.email}">email</span>
+                </p>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+                    🎾 <span th:text="${currentUser.matchesPlayed}">0</span> partite giocate
+                </p>
+            </div>
+
+            <!-- Modifica Livello Dichiarato -->
+            <div class="info-box">
+                <h3>📊 Il Mio Livello</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <p style="color: #666; margin-bottom: 0.25rem; font-size: 0.9rem;">Livello Dichiarato</p>
+                        <p style="font-size: 1.2rem; font-weight: 600; margin: 0;">
+                            🏅 <span th:text="${currentUser.declaredLevel.displayName}">Intermedio</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p style="color: #666; margin-bottom: 0.25rem; font-size: 0.9rem;">Livello Percepito (dai feedback)</p>
+                        <p style="font-size: 1.2rem; font-weight: 600; margin: 0;">
+                            ⭐ <span th:text="${currentUser.perceivedLevel.displayName}">Intermedio</span>
+                        </p>
+                    </div>
+                </div>
+
+                <form th:action="@{/my-profile/update-level}" method="post" style="border-top: 1px solid #eee; padding-top: 1rem;">
+                    <p style="margin-bottom: 1rem; color: #666;">Aggiorna il tuo livello dichiarato:</p>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <select name="declaredLevel" class="form-control" style="flex: 1;" required>
+                            <option value="">Seleziona nuovo livello</option>
+                            <option th:each="level : ${levels}" 
+                                    th:value="${level.name()}" 
+                                    th:text="${level.displayName}"
+                                    th:selected="${level == currentUser.declaredLevel}">Livello</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Aggiorna</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Analisi Feedback -->
+        <section style="margin-bottom: 2rem;" th:if="${!feedbackReceived.empty}">
+            <h2>📈 Analisi Feedback Ricevuti</h2>
+            
+            <div class="info-box" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <p style="color: #666; margin-bottom: 0.5rem;">Media Feedback Ricevuti</p>
+                    <p style="font-size: 2.5rem; font-weight: 700; margin: 0;">
+                        <span th:text="${#numbers.formatDecimal(averageLevel, 1, 1)}">0.0</span>
+                        <span style="font-size: 1rem; color: #666;">/4</span>
+                    </p>
+                    <p style="margin-top: 0.5rem; color: #666;">
+                        <span th:if="${averageLevel >= 1 && averageLevel < 1.5}">📗 Principiante</span>
+                        <span th:if="${averageLevel >= 1.5 && averageLevel < 2.5}">📘 Intermedio</span>
+                        <span th:if="${averageLevel >= 2.5 && averageLevel < 3.5}">📙 Avanzato</span>
+                        <span th:if="${averageLevel >= 3.5}">📕 Professionista</span>
+                    </p>
+                </div>
+
+                <div style="border-top: 2px solid white; padding-top: 1rem;">
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Confronto con livello dichiarato:</p>
+                    <div th:with="declaredValue=${currentUser.declaredLevel.name() == 'PRINCIPIANTE' ? 1 : 
+                                                  (currentUser.declaredLevel.name() == 'INTERMEDIO' ? 2 : 
+                                                  (currentUser.declaredLevel.name() == 'AVANZATO' ? 3 : 4))},
+                                 difference=${averageLevel - declaredValue}">
+                        <p th:if="${difference > 0.3}" style="color: #28a745; font-weight: 600;">
+                            ✅ I tuoi compagni ti valutano SUPERIORE al tuo livello dichiarato! 
+                            <span th:text="'(+' + ${#numbers.formatDecimal(difference, 1, 1)} + ')'"></span>
+                        </p>
+                        <p th:if="${difference >= -0.3 && difference <= 0.3}" style="color: #007bff; font-weight: 600;">
+                            ✓ La valutazione è COERENTE con il tuo livello dichiarato 
+                            <span th:text="'(' + ${#numbers.formatDecimal(difference, 1, 1)} + ')'"></span>
+                        </p>
+                        <p th:if="${difference < -0.3}" style="color: #dc3545; font-weight: 600;">
+                            ⚠️ I tuoi compagni ti valutano INFERIORE al livello dichiarato 
+                            <span th:text="'(' + ${#numbers.formatDecimal(difference, 1, 1)} + ')'"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid white;">
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Distribuzione feedback:</p>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center;">
+                        <div>
+                            <div style="background: white; border-radius: 8px; padding: 0.5rem;">
+                                <div th:text="${countPrincipiante}" style="font-size: 1.5rem; font-weight: 700;">0</div>
+                                <div style="font-size: 0.8rem; color: #666;">Principiante</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="background: white; border-radius: 8px; padding: 0.5rem;">
+                                <div th:text="${countIntermedio}" style="font-size: 1.5rem; font-weight: 700;">0</div>
+                                <div style="font-size: 0.8rem; color: #666;">Intermedio</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="background: white; border-radius: 8px; padding: 0.5rem;">
+                                <div th:text="${countAvanzato}" style="font-size: 1.5rem; font-weight: 700;">0</div>
+                                <div style="font-size: 0.8rem; color: #666;">Avanzato</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="background: white; border-radius: 8px; padding: 0.5rem;">
+                                <div th:text="${countProfessionista}" style="font-size: 1.5rem; font-weight: 700;">0</div>
+                                <div style="font-size: 0.8rem; color: #666;">Professionista</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feedback ricevuti -->
+        <section style="margin-bottom: 2rem;">
+            <h2>⭐ Feedback Ricevuti</h2>
+            
+            <div class="empty-state" th:if="${feedbackReceived.empty}">
+                <p>Nessun feedback ricevuto ancora</p>
+                <p style="color: #666; font-size: 0.9rem;">Gioca più partite per ricevere valutazioni!</p>
+            </div>
+
+            <div class="feedback-list" th:if="${!feedbackReceived.empty}">
+                <div class="feedback-card" th:each="feedback : ${feedbackReceived}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong th:text="${feedback.author.firstName + ' ' + feedback.author.lastName}">Nome</strong>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0;">
+                                Partita: <span th:text="${feedback.match.location}">Luogo</span> - 
+                                <span th:text="${#temporals.format(feedback.match.dateTime, 'dd/MM/yyyy')}">Data</span>
+                            </p>
+                        </div>
+                        <span class="level-tag" th:text="${feedback.suggestedLevel.displayName}">Livello</span>
+                    </div>
+                    <p th:if="${feedback.comment}" style="margin-top: 0.5rem; font-style: italic;">
+                        "<span th:text="${feedback.comment}">Commento</span>"
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feedback dati -->
+        <section>
+            <h2>📝 Feedback che ho Dato</h2>
+            
+            <div class="empty-state" th:if="${feedbackGiven.empty}">
+                <p>Non hai ancora dato feedback</p>
+                <p style="color: #666; font-size: 0.9rem;">Termina una partita per valutare i tuoi compagni!</p>
+            </div>
+
+            <div class="feedback-list" th:if="${!feedbackGiven.empty}">
+                <div class="feedback-card" th:each="feedback : ${feedbackGiven}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong>A: <span th:text="${feedback.targetUser.firstName + ' ' + feedback.targetUser.lastName}">Nome</span></strong>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0;">
+                                Partita: <span th:text="${feedback.match.location}">Luogo</span> - 
+                                <span th:text="${#temporals.format(feedback.match.dateTime, 'dd/MM/yyyy')}">Data</span>
+                            </p>
+                        </div>
+                        <span class="level-tag" th:text="${feedback.suggestedLevel.displayName}">Livello</span>
+                    </div>
+                    <p th:if="${feedback.comment}" style="margin-top: 0.5rem; font-style: italic;">
+                        "<span th:text="${feedback.comment}">Commento</span>"
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <footer style="margin-top: 3rem;">
+            <p>App Padel - Progetto Ingegneria del Software 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

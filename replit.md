@@ -131,6 +131,11 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
+- 2025-10-14: **FIX THYMELEAF LAMBDA & LAZY LOADING** - Risolti errori template profilo
+  - WebController: Calcolo distribuzione feedback nel controller (countPrincipiante, countIntermedio, etc.)
+  - my-profile.html: Rimossi lambda expressions incompatibili con Thymeleaf SpEL
+  - FeedbackRepository: Aggiunto JOIN FETCH per match oltre ad author e targetUser
+  - Pagina "Il Mio Profilo" completamente funzionante con analytics feedback
 - 2025-10-11: **FIX LAZY LOADING** - Risolti tutti i LazyInitializationException
   - FeedbackRepository: Aggiunto JOIN FETCH per author e targetUser
   - WebController: Aggiunto @Transactional(readOnly = true) su myMatches

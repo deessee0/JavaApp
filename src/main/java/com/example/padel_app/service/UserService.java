@@ -67,6 +67,12 @@ public class UserService {
         return userRepository.save(user);
     }
     
+    @Transactional
+    public User updateDeclaredLevel(User user, Level newLevel) {
+        user.setDeclaredLevel(newLevel);
+        return userRepository.save(user);
+    }
+    
     public boolean existsByUsername(String username) {
         return userRepository.existsByUsername(username);
     }

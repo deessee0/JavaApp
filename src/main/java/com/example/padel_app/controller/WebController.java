@@ -63,19 +63,9 @@ public class WebController {
             .sorted((m1, m2) -> m2.getDateTime().compareTo(m1.getDateTime()))
             .collect(java.util.stream.Collectors.toList());
         
-        // Feedback ricevuti da Margherita
-        List<com.example.padel_app.model.Feedback> feedbackReceived = 
-            feedbackService.getFeedbacksByTargetUser(currentUser);
-        
-        // Feedback dati da Margherita
-        List<com.example.padel_app.model.Feedback> feedbackGiven = 
-            feedbackService.getFeedbacksByAuthor(currentUser);
-        
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("registeredMatches", myRegisteredMatches);
         model.addAttribute("finishedMatches", myFinishedMatches);
-        model.addAttribute("feedbackReceived", feedbackReceived);
-        model.addAttribute("feedbackGiven", feedbackGiven);
         
         return "my-matches";
     }
@@ -180,13 +170,13 @@ public class WebController {
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
             
             registrationService.leaveMatch(currentUser, match);
-            redirectAttributes.addFlashAttribute("success", "Ti sei disiscritto dalla partita!");
+            redirectAttributes.addFlashAttribute("success", "Ti sei disiscritto dalla partita! Ora è di nuovo disponibile.");
             
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         
-        return "redirect:/my-matches";
+        return "redirect:/";
     }
     
     // Finish match
@@ -201,7 +191,7 @@ public class WebController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         
-        return "redirect:/matches";
+        return "redirect:/my-matches";
     }
     
     // Feedback page
@@ -254,6 +244,70 @@ public class WebController {
         }
         
         return "redirect:/matches/" + id + "/feedback";
+    }
+    
+    // My Profile page
+    @GetMapping("/my-profile")
+    public String myProfile(Model model) {
+        User currentUser = userContext.getCurrentUser();
+        
+        // Feedback ricevuti e dati
+        List<com.example.padel_app.model.Feedback> feedbackReceived = 
+            feedbackService.getFeedbacksByTargetUser(currentUser);
+        List<com.example.padel_app.model.Feedback> feedbackGiven = 
+            feedbackService.getFeedbacksByAuthor(currentUser);
+        
+        // Calcolo media feedback ricevuti
+        Double averageLevel = feedbackReceived.isEmpty() ? null : 
+            feedbackReceived.stream()
+                .mapToInt(f -> {
+                    switch(f.getSuggestedLevel()) {
+                        case PRINCIPIANTE: return 1;
+                        case INTERMEDIO: return 2;
+                        case AVANZATO: return 3;
+                        case PROFESSIONISTA: return 4;
+                        default: return 0;
+                    }
+                })
+                .average()
+                .orElse(0.0);
+        
+        // Calcolo distribuzione feedback per livello
+        long countPrincipiante = feedbackReceived.stream()
+            .filter(f -> f.getSuggestedLevel() == Level.PRINCIPIANTE).count();
+        long countIntermedio = feedbackReceived.stream()
+            .filter(f -> f.getSuggestedLevel() == Level.INTERMEDIO).count();
+        long countAvanzato = feedbackReceived.stream()
+            .filter(f -> f.getSuggestedLevel() == Level.AVANZATO).count();
+        long countProfessionista = feedbackReceived.stream()
+            .filter(f -> f.getSuggestedLevel() == Level.PROFESSIONISTA).count();
+        
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("feedbackReceived", feedbackReceived);
+        model.addAttribute("feedbackGiven", feedbackGiven);
+        model.addAttribute("averageLevel", averageLevel);
+        model.addAttribute("countPrincipiante", countPrincipiante);
+        model.addAttribute("countIntermedio", countIntermedio);
+        model.addAttribute("countAvanzato", countAvanzato);
+        model.addAttribute("countProfessionista", countProfessionista);
+        model.addAttribute("levels", Level.values());
+        
+        return "my-profile";
+    }
+    
+    // Update declared level
+    @PostMapping("/my-profile/update-level")
+    public String updateDeclaredLevel(@RequestParam String declaredLevel,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            User currentUser = userContext.getCurrentUser();
+            userService.updateDeclaredLevel(currentUser, Level.valueOf(declaredLevel));
+            redirectAttributes.addFlashAttribute("success", "Livello dichiarato aggiornato con successo!");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Errore nell'aggiornamento: " + e.getMessage());
+        }
+        
+        return "redirect:/my-profile";
     }
     
     // DTO per il form
