@@ -36,11 +36,11 @@ public class RegistrationService {
     }
     
     public boolean isUserRegisteredForMatch(User user, Match match) {
-        return registrationRepository.existsByUserAndMatch(user, match);
+        return registrationRepository.existsByUserAndMatchAndStatus(user, match, RegistrationStatus.JOINED);
     }
     
     public boolean isUserRegistered(User user, Match match) {
-        return registrationRepository.existsByUserAndMatch(user, match);
+        return registrationRepository.existsByUserAndMatchAndStatus(user, match, RegistrationStatus.JOINED);
     }
     
     public List<Registration> getActiveRegistrationsByUser(User user) {

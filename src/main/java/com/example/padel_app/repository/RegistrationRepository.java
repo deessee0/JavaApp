@@ -24,6 +24,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     
     boolean existsByUserAndMatch(User user, Match match);
     
+    boolean existsByUserAndMatchAndStatus(User user, Match match, RegistrationStatus status);
+    
     @Query("SELECT r FROM Registration r WHERE r.match = :match AND r.status = :status")
     List<Registration> findByMatchAndStatus(Match match, RegistrationStatus status);
     
