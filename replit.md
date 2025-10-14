@@ -131,6 +131,13 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
+- 2025-10-14: **FIX REGISTRATION FILTERING & FEEDBACK PAGE COMPLETE** 
+  - RegistrationService.isUserRegistered(): Ora controlla solo status JOINED (non CANCELLED)
+  - Fix: Partite tornano disponibili dopo disiscrizione (filtro home page corretto)
+  - RegistrationRepository: JOIN FETCH r.user per feedback page (risolto LazyInitializationException)
+  - WebController.feedbackForm(): Aggiunto @Transactional(readOnly = true)
+  - Pagina feedback completamente funzionante con lista giocatori e form
+  - CSRF: Form HTML include token automaticamente (curl richiede CSRF header)
 - 2025-10-14: **FIX THYMELEAF LAMBDA & LAZY LOADING** - Risolti errori template profilo
   - WebController: Calcolo distribuzione feedback nel controller (countPrincipiante, countIntermedio, etc.)
   - my-profile.html: Rimossi lambda expressions incompatibili con Thymeleaf SpEL
