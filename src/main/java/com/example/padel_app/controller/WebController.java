@@ -196,6 +196,7 @@ public class WebController {
     
     // Feedback page
     @GetMapping("/matches/{id}/feedback")
+    @Transactional(readOnly = true)
     public String feedbackForm(@PathVariable Long id, Model model) {
         User currentUser = userContext.getCurrentUser();
         Match match = matchService.getMatchById(id)

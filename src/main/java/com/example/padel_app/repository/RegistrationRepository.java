@@ -26,7 +26,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     
     boolean existsByUserAndMatchAndStatus(User user, Match match, RegistrationStatus status);
     
-    @Query("SELECT r FROM Registration r WHERE r.match = :match AND r.status = :status")
+    @Query("SELECT r FROM Registration r JOIN FETCH r.user WHERE r.match = :match AND r.status = :status")
     List<Registration> findByMatchAndStatus(Match match, RegistrationStatus status);
     
     @Query("SELECT COUNT(r) FROM Registration r WHERE r.match = :match AND r.status = 'JOINED'")
