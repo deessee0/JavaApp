@@ -69,29 +69,19 @@
                 </div>
                 
                 <div class="match-actions">
+                    <p class="form-help" th:if="${match.status.name() == 'WAITING'}">Le azioni si applicano all'utente attualmente connesso.</p>
+
                     <!-- Join form per partite in attesa -->
-                    <form th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount < 4}" 
-                          th:action="@{/matches/{id}/join(id=${match.id})}" 
+                    <form th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount < 4}"
+                          th:action="@{/matches/{id}/join(id=${match.id})}"
                           method="post" style="display: inline;">
-                        <select name="userId" required style="padding: 0.5rem; margin-right: 0.5rem;">
-                            <option value="">Seleziona utente</option>
-                            <option th:each="user : ${@userService.getAllUsers()}" 
-                                    th:value="${user.id}" 
-                                    th:text="${user.firstName + ' ' + user.lastName}">Utente</option>
-                        </select>
                         <button type="submit" class="btn btn-success">Unisciti</button>
                     </form>
-                    
+
                     <!-- Leave form per partite in attesa -->
-                    <form th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount > 0}" 
-                          th:action="@{/matches/{id}/leave(id=${match.id})}" 
+                    <form th:if="${match.status.name() == 'WAITING' and match.activeRegistrationsCount > 0}"
+                          th:action="@{/matches/{id}/leave(id=${match.id})}"
                           method="post" style="display: inline; margin-left: 0.5rem;">
-                        <select name="userId" required style="padding: 0.5rem; margin-right: 0.5rem;">
-                            <option value="">Seleziona utente</option>
-                            <option th:each="user : ${@userService.getAllUsers()}" 
-                                    th:value="${user.id}" 
-                                    th:text="${user.firstName + ' ' + user.lastName}">Utente</option>
-                        </select>
                         <button type="submit" class="btn btn-secondary">Esci</button>
                     </form>
                     
