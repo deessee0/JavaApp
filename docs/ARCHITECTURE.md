@@ -130,7 +130,7 @@ Incapsula la logica business e orchestra le operazioni.
 
 **MatchService**:
 - Gestisce creazione, join, leave partite
-- Pubblica eventi Observer
+- Aggiorna direttamente lo stato e registra i passaggi significativi nei log
 - Utilizza Strategy pattern per ordinamento
 
 **RegistrationService**:
@@ -141,75 +141,11 @@ Incapsula la logica business e orchestra le operazioni.
 - Gestisce feedback post-partita
 - Calcola e aggiorna livello percepito
 
-**NotificationService** (Singleton):
-- Servizio centralizzato per notifiche
-- Log eventi di sistema
-
 ---
 
 ## 3. Design Patterns
 
-### 3.1 Observer Pattern
-
-**Problema**: Notificare componenti interessati quando lo stato di una partita cambia.
-
-**Soluzione**: Pattern Observer con eventi Spring
-
-#### Implementazione
-
-**Eventi** (`com.example.padel_app.event`):
-```java
-public class MatchConfirmedEvent extends ApplicationEvent {
-    private final Match match;
-    private final LocalDateTime timestamp;
-}
-
-public class MatchFinishedEvent extends ApplicationEvent {
-    private final Match match;
-    private final LocalDateTime timestamp;
-}
-```
-
-**Publisher** (`MatchService`):
-```java
-@Service
-public class MatchService {
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
-    
-    public void confirmMatch(Match match) {
-        match.setStatus(MatchStatus.CONFIRMED);
-        matchRepository.save(match);
-        
-        // Pubblica evento
-        eventPublisher.publishEvent(
-            new MatchConfirmedEvent(this, match)
-        );
-    }
-}
-```
-
-**Listener** (`MatchEventListener`):
-```java
-@Component
-public class MatchEventListener {
-    @EventListener
-    public void handleMatchConfirmed(MatchConfirmedEvent event) {
-        notificationService.sendMatchConfirmedNotification(
-            event.getMatch()
-        );
-    }
-}
-```
-
-**Vantaggi**:
-- Disaccoppiamento tra publisher e subscriber
-- Facile aggiunta di nuovi listener
-- Spring gestisce lifecycle e threading
-
----
-
-### 3.2 Strategy Pattern
+### 3.1 Strategy Pattern
 
 **Problema**: Implementare diversi algoritmi di ordinamento partite in modo intercambiabile.
 
@@ -271,35 +207,16 @@ public class MatchService {
 
 ---
 
-### 3.3 Singleton Pattern
+### 3.2 Gestione dello stato delle partite
 
-**Problema**: Garantire una singola istanza del servizio notifiche.
+**Problema**: Coordinare la transizione di stato delle partite quando si verifica una condizione business (4 giocatori registrati o partita scaduta).
 
-**Soluzione**: Spring bean singleton scope (default)
-
-#### Implementazione
-
-```java
-@Service
-@Scope("singleton") // Esplicito per documentazione
-public class NotificationService {
-    
-    public void sendMatchConfirmedNotification(Match match) {
-        log.info("🎉 Partita confermata: {} - 4 giocatori!", 
-                 match.getLocation());
-    }
-    
-    public void sendMatchFinishedNotification(Match match) {
-        log.info("🏁 Partita terminata: {}", match.getLocation());
-    }
-}
-```
+**Soluzione**: Logica incapsulata in `MatchService`, che aggiorna lo stato direttamente tramite repository e registra l'esito nei log.
 
 **Caratteristiche**:
-- Spring garantisce singleton per default
-- @Scope("singleton") rende esplicita l'intenzione
-- Thread-safe grazie al container Spring
-- Lazy initialization controllata da Spring
+- Riduce la complessità eliminando dipendenze tra publisher e listener
+- Facilita il debugging grazie ai log espliciti delle transizioni di stato
+- Mantiene il focus del servizio sulla logica business principale
 
 ---
 
@@ -362,19 +279,16 @@ public class Feedback { ... }
 **Requisito**: Partita confermata automaticamente al 4° giocatore
 
 **Implementazione**:
-1. Dopo ogni iscrizione, controllo numero giocatori
-2. Se 4 → cambio stato a CONFIRMED
-3. Pubblicazione evento MatchConfirmedEvent
-4. Listener gestisce notifiche
+1. Dopo ogni iscrizione, il servizio recupera il numero di giocatori attivi dal repository
+2. Se raggiunge 4 → cambio stato a `CONFIRMED`
+3. Salvataggio della partita e log del cambio stato
 
 ```java
-if (match.getActiveRegistrationsCount() >= 4) {
+if (activeCount >= 4 && match.getStatus() == MatchStatus.WAITING) {
     match.setStatus(MatchStatus.CONFIRMED);
-    matchRepository.save(match);
-    
-    eventPublisher.publishEvent(
-        new MatchConfirmedEvent(this, match)
-    );
+    Match savedMatch = matchRepository.save(match);
+    log.info("Match {} status changed from {} to {}",
+             savedMatch.getId(), MatchStatus.WAITING, MatchStatus.CONFIRMED);
 }
 ```
 

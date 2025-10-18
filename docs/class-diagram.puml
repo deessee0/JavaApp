@@ -104,32 +104,6 @@ package "service" {
     +updatePerceivedLevel(userId): void
   }
   
-  class NotificationService <<Singleton>> {
-    +sendMatchConfirmedNotification(match): void
-    +sendMatchFinishedNotification(match): void
-  }
-}
-
-package "event" {
-  
-  class MatchConfirmedEvent {
-    -match: Match
-    -timestamp: LocalDateTime
-  }
-  
-  class MatchFinishedEvent {
-    -match: Match
-    -timestamp: LocalDateTime
-  }
-}
-
-package "listener" {
-  
-  class MatchEventListener <<Observer>> {
-    -notificationService: NotificationService
-    +handleMatchConfirmed(event): void
-    +handleMatchFinished(event): void
-  }
 }
 
 package "strategy" {
@@ -203,15 +177,9 @@ Match "1" -- "*" Feedback : has >
 
 MatchService --> MatchRepository
 MatchService --> MatchSortingStrategy : uses >
-MatchService ..> MatchConfirmedEvent : publishes >
-
 RegistrationService --> RegistrationRepository
 
 FeedbackService --> FeedbackRepository
-
-MatchEventListener ..> MatchConfirmedEvent : listens >
-MatchEventListener ..> MatchFinishedEvent : listens >
-MatchEventListener --> NotificationService : uses >
 
 DateSortingStrategy ..|> MatchSortingStrategy
 PopularitySortingStrategy ..|> MatchSortingStrategy
@@ -226,16 +194,10 @@ note right of MatchSortingStrategy
   intercambiabili
 end note
 
-note right of MatchEventListener
-  Observer Pattern:
-  Ascolta eventi di cambio
-  stato delle partite
-end note
-
-note right of NotificationService
-  Singleton Pattern:
-  Unica istanza del
-  servizio notifiche
+note right of MatchService
+  Gestione stato partite:
+  conferma automatica e
+  chiusura con logging.
 end note
 
 @enduml

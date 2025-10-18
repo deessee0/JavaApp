@@ -7,9 +7,7 @@ participant "WebController" as web
 participant "MatchService" as service
 participant "MatchRepository" as repo
 participant "RegistrationService" as regService
-participant "EventPublisher" as publisher
-participant "MatchEventListener" as listener
-participant "NotificationService" as notif
+participant "Logger" as logger
 database "Database" as db
 
 == Join Partita ==
@@ -46,23 +44,10 @@ alt Numero iscritti == 4
     service -> service: updateStatus(CONFIRMED)
     service -> db: UPDATE matches SET status = 'CONFIRMED'
     
-    service -> publisher: publishEvent(MatchConfirmedEvent)
-    activate publisher
-    
-    publisher -> listener: handleMatchConfirmed(event)
-    activate listener
-    
-    listener -> notif: sendMatchConfirmedNotification(match)
-    activate notif
-    notif -> notif: log("Partita confermata: {}")
-    notif --> listener: void
-    deactivate notif
-    
-    listener --> publisher: void
-    deactivate listener
-    
-    publisher --> service: void
-    deactivate publisher
+    service -> logger: info("Match {id} confermato")
+    activate logger
+    logger --> service: void
+    deactivate logger
     
 end
 
@@ -102,10 +87,10 @@ deactivate web
 
 note over player, db
   Design Patterns applicati:
-  
-  1. **Observer**: MatchEventListener ascolta MatchConfirmedEvent
-  2. **Strategy**: MatchService usa diverse strategie di ordinamento
-  3. **Singleton**: NotificationService è unica istanza
+
+  1. **Strategy**: MatchService usa diverse strategie di ordinamento
+  2. **Logging**: Le transizioni di stato vengono tracciate
+     direttamente dal servizio
 end note
 
 @enduml

@@ -1,7 +1,7 @@
 # Padel App - Progetto Universitario
 
 ## Overview
-Applicazione Spring Boot Java per la gestione di partite di padel, sviluppata come progetto universitario. L'applicazione implementa l'architettura MVC con 3 Design Pattern obbligatori (Observer, Strategy, Singleton) e fornisce un'interfaccia web semplificata per demo rapida.
+Applicazione Spring Boot Java per la gestione di partite di padel, sviluppata come progetto universitario. L'applicazione implementa l'architettura MVC con enfasi sullo Strategy Pattern per l'ordinamento delle partite e una logica di business lineare per la gestione dello stato.
 
 ## Autore
 **Studente**: [Nome da inserire]  
@@ -20,13 +20,7 @@ Applicazione Spring Boot Java per la gestione di partite di padel, sviluppata co
 
 ## Design Patterns Implementati
 
-### 1. Observer Pattern
-- **Evento**: `MatchConfirmedEvent` (quando una partita raggiunge 4 giocatori)
-- **Evento**: `MatchFinishedEvent` (quando una partita termina)
-- **Listener**: `MatchEventListener` (ascolta eventi e invia notifiche)
-- **Publisher**: `ApplicationEventPublisher` (Spring built-in)
-
-### 2. Strategy Pattern
+### 1. Strategy Pattern
 - **Interfaccia**: `MatchSortingStrategy`
 - **Concrete Strategies**:
   - `DateSortingStrategy` - ordina per data
@@ -34,17 +28,16 @@ Applicazione Spring Boot Java per la gestione di partite di padel, sviluppata co
   - `LevelSortingStrategy` - ordina per livello richiesto
 - **Context**: `MatchService` (seleziona strategia dinamicamente)
 
-### 3. Singleton Pattern
-- Implementato tramite Spring IoC Container
-- Tutti i Service beans sono Singleton per default
-- `ApplicationEventPublisher` gestito come Singleton da Spring
+### 2. Gestione stato con logging
+- `MatchService` aggiorna direttamente lo stato delle partite quando raggiungono 4 giocatori o risultano scadute
+- Ogni transizione di stato viene registrata nei log applicativi per tracciabilità
 
 ## Funzionalità Principali
 1. **Gestione Utenti**: Registrazione con livello dichiarato e livello percepito
 2. **Gestione Partite**: Creazione, join, leave, conferma automatica a 4 giocatori
 3. **Sistema Feedback**: Valutazione giocatori post-partita con aggiornamento livello percepito
 4. **Sorting Dinamico**: Ordinamento partite con Strategy Pattern
-5. **Notifiche**: Sistema notifiche tramite Observer Pattern
+5. **Logging**: Tracciamento dei cambi di stato direttamente nel servizio
 
 ## Testing e Coverage
 
@@ -212,7 +205,7 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 ✅ **APPLICAZIONE COMPLETA E FUNZIONANTE**
 
 L'applicazione è pronta per la submission universitaria:
-- Design Patterns implementati correttamente (Observer, Strategy, Singleton)
+- Design Patterns implementati correttamente (Strategy + gestione stato con logging)
 - Simulazione utente singolo (Margherita Biffi) funzionante
 - UI semplificata per demo rapida
 - Tutti i LazyInitializationException risolti

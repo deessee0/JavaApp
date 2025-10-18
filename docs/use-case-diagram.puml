@@ -54,7 +54,8 @@ UC11 ..> UC13 : <<trigger>>
 note right of UC11
   La conferma avviene automaticamente
   quando si raggiungono 4 iscritti.
-  Implementato con Observer Pattern.
+  Gestito direttamente dal servizio
+  con registrazione nei log.
 end note
 
 note right of UC8
@@ -64,8 +65,9 @@ note right of UC8
 end note
 
 note right of UC13
-  Il servizio di notifiche
-  è implementato come Singleton.
+  La chiusura partita genera
+  un log informativo per tracciare
+  lo stato delle partite.
 end note
 
 @enduml
