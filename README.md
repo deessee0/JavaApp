@@ -24,7 +24,7 @@ L'applicazione **App Padel** è un sistema di gestione partite di padel tra gioc
 
 Il progetto dimostra l'applicazione pratica dei principi di Ingegneria del Software attraverso:
 1. **Architettura MVC** ben strutturata
-2. **Design Patterns** (Observer, Strategy, Singleton)
+2. **Design Patterns** (Strategy per l'ordinamento, gestione stato con logging)
 3. **Persistenza dati** con JPA/Hibernate
 4. **Interfaccia utente** web con Thymeleaf
 5. **Testing** con coverage ≥80%
@@ -48,9 +48,9 @@ Il progetto dimostra l'applicazione pratica dei principi di Ingegneria del Softw
 - **RF3.2**: Vincolo: un feedback per utente per partita
 - **RF3.3**: Aggiornamento livello percepito basato su media feedback
 
-### RF4: Notifiche
-- **RF4.1**: Notifica conferma partita (4 giocatori)
-- **RF4.2**: Notifica termine partita
+### RF4: Logging stato partite
+- **RF4.1**: Registrazione su log della conferma partita (4 giocatori)
+- **RF4.2**: Registrazione su log della chiusura partita
 
 ## 🔧 Requisiti Non Funzionali
 
@@ -85,21 +85,7 @@ Il progetto dimostra l'applicazione pratica dei principi di Ingegneria del Softw
 
 ### Design Patterns Implementati
 
-#### 1. Observer Pattern
-**Scopo**: Notificare gli interessati quando cambiano gli stati delle partite
-
-**Implementazione**:
-- `MatchConfirmedEvent`: Evento pubblicato quando una partita raggiunge 4 giocatori
-- `MatchFinishedEvent`: Evento pubblicato quando una partita termina
-- `MatchEventListener`: Listener che gestisce gli eventi
-- `NotificationService`: Singleton che invia le notifiche
-
-**File coinvolti**:
-- `src/main/java/com/example/padel_app/event/MatchConfirmedEvent.java`
-- `src/main/java/com/example/padel_app/event/MatchFinishedEvent.java`
-- `src/main/java/com/example/padel_app/listener/MatchEventListener.java`
-
-#### 2. Strategy Pattern
+#### 1. Strategy Pattern
 **Scopo**: Implementare diversi algoritmi di ordinamento partite in modo intercambiabile
 
 **Implementazione**:
@@ -114,15 +100,11 @@ Il progetto dimostra l'applicazione pratica dei principi di Ingegneria del Softw
 - `src/main/java/com/example/padel_app/strategy/PopularitySortingStrategy.java`
 - `src/main/java/com/example/padel_app/strategy/LevelSortingStrategy.java`
 
-#### 3. Singleton Pattern
-**Scopo**: Garantire una singola istanza del servizio di notifiche
+#### 2. Gestione stato partite
+**Scopo**: Confermare o terminare le partite quando si verificano determinate condizioni.
 
 **Implementazione**:
-- `NotificationService`: Annotato con @Service (singleton per default in Spring)
-- `@Scope("singleton")`: Esplicita dichiarazione singleton
-
-**File coinvolti**:
-- `src/main/java/com/example/padel_app/service/NotificationService.java`
+- La logica è incapsulata in `MatchService`, che aggiorna direttamente lo stato della partita e registra il cambiamento nei log applicativi.
 
 ## 📦 Struttura del Progetto
 
@@ -133,11 +115,8 @@ src/main/java/com/example/padel_app/
 ├── controller/                # Controllers MVC
 │   ├── MatchController.java  # API REST partite
 │   └── WebController.java    # Controllers pagine web
-├── event/                     # Eventi Observer pattern
-│   ├── MatchConfirmedEvent.java
-│   └── MatchFinishedEvent.java
-├── listener/                  # Listener Observer pattern
-│   └── MatchEventListener.java
+├── event/                     # (vuoto - riservato per futuri eventi)
+├── listener/                  # (vuoto - riservato per futuri listener)
 ├── model/                     # Entità JPA
 │   ├── User.java
 │   ├── Match.java
@@ -157,8 +136,7 @@ src/main/java/com/example/padel_app/
 │   ├── MatchService.java
 │   ├── RegistrationService.java
 │   ├── FeedbackService.java
-│   ├── UserService.java
-│   └── NotificationService.java
+│   └── UserService.java
 ├── strategy/                  # Strategy pattern
 │   ├── MatchSortingStrategy.java
 │   ├── DateSortingStrategy.java
@@ -189,7 +167,6 @@ src/test/java/
 - **RegistrationServiceTest**: Test iscrizioni e vincoli
 - **FeedbackServiceTest**: Test feedback e livello percepito
 - **StrategyPatternTest**: Test algoritmi ordinamento
-- **ObserverPatternTest**: Test eventi e notifiche
 
 #### Coverage
 - Target: ≥80% coverage con JaCoCo

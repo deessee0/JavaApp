@@ -1,7 +1,5 @@
 package com.example.padel_app.service;
 
-import com.example.padel_app.event.MatchConfirmedEvent;
-import com.example.padel_app.event.MatchFinishedEvent;
 import com.example.padel_app.model.Match;
 import com.example.padel_app.model.enums.Level;
 import com.example.padel_app.model.enums.MatchStatus;
@@ -9,7 +7,6 @@ import com.example.padel_app.repository.MatchRepository;
 import com.example.padel_app.strategy.MatchSortingStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +23,6 @@ public class MatchService {
     
     private final MatchRepository matchRepository;
     private final com.example.padel_app.repository.RegistrationRepository registrationRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final Map<String, MatchSortingStrategy> sortingStrategies;
     
     public List<Match> getAllMatches() {
@@ -83,27 +79,25 @@ public class MatchService {
         matchRepository.deleteById(id);
     }
     
-    // Business logic for auto-confirming matches when 4 players join (Observer Pattern)
+    // Business logic for auto-confirming matches when 4 players join
     @Transactional
     public Match checkAndConfirmMatch(Match match) {
         // Use repository to get accurate count instead of entity collection
         int activeCount = registrationRepository.countActiveRegistrationsByMatch(match);
-        
+
         if (activeCount >= 4 && match.getStatus() == MatchStatus.WAITING) {
             MatchStatus oldStatus = match.getStatus();
             match.setStatus(MatchStatus.CONFIRMED);
             Match savedMatch = matchRepository.save(match);
-            
-            // Publish Observer event
-            log.info("🎯 Publishing MatchConfirmedEvent for match ID: {}", savedMatch.getId());
-            eventPublisher.publishEvent(new MatchConfirmedEvent(this, savedMatch));
-            
+
+            log.info("Match {} status changed from {} to {}", savedMatch.getId(), oldStatus, savedMatch.getStatus());
+
             return savedMatch;
         }
         return match;
     }
-    
-    // Business logic for marking matches as finished (Observer Pattern)
+
+    // Business logic for marking matches as finished
     @Transactional
     public void markExpiredMatchesAsFinished() {
         List<Match> expiredMatches = matchRepository.findByDateTimeBefore(LocalDateTime.now());
@@ -112,14 +106,12 @@ public class MatchService {
                 MatchStatus oldStatus = match.getStatus();
                 match.setStatus(MatchStatus.FINISHED);
                 Match savedMatch = matchRepository.save(match);
-                
-                // Publish Observer event
-                log.info("🏁 Publishing MatchFinishedEvent for match ID: {}", savedMatch.getId());
-                eventPublisher.publishEvent(new MatchFinishedEvent(this, savedMatch));
+
+                log.info("Match {} status changed from {} to {}", savedMatch.getId(), oldStatus, savedMatch.getStatus());
             }
         }
     }
-    
+
     // Manual finish match method for testing
     @Transactional
     public Match finishMatch(Long matchId) {
@@ -129,11 +121,9 @@ public class MatchService {
             if (match.getStatus() == MatchStatus.CONFIRMED) {
                 match.setStatus(MatchStatus.FINISHED);
                 Match savedMatch = matchRepository.save(match);
-                
-                // Publish Observer event
-                log.info("🏁 Manual finish - Publishing MatchFinishedEvent for match ID: {}", savedMatch.getId());
-                eventPublisher.publishEvent(new MatchFinishedEvent(this, savedMatch));
-                
+
+                log.info("Match {} manually set to {}", savedMatch.getId(), savedMatch.getStatus());
+
                 return savedMatch;
             }
         }
