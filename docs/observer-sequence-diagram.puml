@@ -1,0 +1,144 @@
+@startuml Observer Pattern - Sequence Diagram
+
+title Observer Pattern: Match Confirmation Flow
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Giocatore 4" as player #LightBlue
+participant ":WebController" as controller
+participant ":MatchService" as service <<Context>>
+participant ":RegistrationService" as regService
+participant ":Match" as match <<Entity>>
+database ":MatchRepository" as repo
+participant ":ApplicationEventPublisher" as publisher <<Spring>>
+participant ":MatchEventListener" as listener <<Observer>>
+participant ":NotificationService" as notification <<Singleton>>
+
+== Join Match (4° giocatore) ==
+
+player -> controller: POST /matches/{id}/join
+activate controller
+
+controller -> service: joinMatch(matchId, userId)
+activate service
+
+service -> repo: findById(matchId)
+activate repo
+repo --> service: Match (status=WAITING, players=3)
+deactivate repo
+
+service -> service: validateMatch()
+note right
+  Verifica:
+  - Match status = WAITING
+  - Match non pieno
+  - User non già iscritto
+end note
+
+service -> regService: registerUser(match, user)
+activate regService
+
+regService -> regService: checkDuplicateRegistration()
+
+regService -> repo: save(registration)
+activate repo
+repo --> regService: Registration
+deactivate repo
+
+regService --> service: Registration (4° giocatore)
+deactivate regService
+
+service -> match: getActiveRegistrationsCount()
+activate match
+match --> service: 4
+deactivate match
+
+alt activeRegistrations == 4
+    
+    note over service #LightYellow
+        **AUTO-CONFIRM LOGIC**
+        Il 4° giocatore attiva
+        la conferma automatica
+    end note
+    
+    service -> match: setStatus(CONFIRMED)
+    activate match
+    match --> service: void
+    deactivate match
+    
+    service -> repo: save(match)
+    activate repo
+    repo --> service: Match (status=CONFIRMED)
+    deactivate repo
+    
+    '========== OBSERVER PATTERN START ==========
+    
+    note over service, publisher #LightGreen
+        **OBSERVER PATTERN**
+        Pubblicazione evento
+    end note
+    
+    service -> publisher: publishEvent(MatchConfirmedEvent)
+    activate publisher
+    
+    note right of publisher
+        Spring Event Mechanism
+        routing asincrono
+    end note
+    
+    publisher -> listener: handleMatchConfirmed(event)
+    activate listener
+    
+    note over listener #LightGreen
+        **LISTENER (Observer)**
+        Reagisce all'evento
+    end note
+    
+    listener -> notification: sendMatchConfirmedNotification(match)
+    activate notification
+    
+    notification -> notification: log.info("🎉 Partita confermata!")
+    
+    note right of notification #LightBlue
+        **SINGLETON**
+        Istanza unica del
+        servizio notifiche
+    end note
+    
+    notification --> listener: void
+    deactivate notification
+    
+    listener --> publisher: void
+    deactivate listener
+    
+    publisher --> service: void
+    deactivate publisher
+    
+    '========== OBSERVER PATTERN END ==========
+    
+end
+
+service --> controller: Registration
+deactivate service
+
+controller --> player: redirect:/matches (flash: "Partita confermata!")
+deactivate controller
+
+== Risultato ==
+
+note over player, notification
+  **Vantaggi Observer Pattern:**
+  
+  ✅ **Disaccoppiamento**: MatchService non conosce NotificationService
+  ✅ **Estensibilità**: Facile aggiungere nuovi listener (es. EmailService, SMSService)
+  ✅ **Single Responsibility**: Ogni componente ha una responsabilità unica
+  ✅ **Open/Closed**: Aggiungere observer senza modificare publisher
+  
+  **Implementazione Spring:**
+  - ApplicationEventPublisher: Publisher integrato
+  - @EventListener: Annotazione per observer
+  - Eventi asincroni possibili con @Async
+end note
+
+@enduml

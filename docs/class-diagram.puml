@@ -1,54 +1,75 @@
-@startuml Class Diagram - App Padel
+@startuml Class Diagram - App Padel (Completo)
 
-title Sistema Gestione Partite Padel - Class Diagram
+title Sistema Gestione Partite Padel - Class Diagram Dettagliato
 
-' Packages
-package "model" {
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<Singleton>> LightBlue
+  BackgroundColor<<Strategy>> LightYellow
+  BackgroundColor<<Observer>> LightGreen
+  BackgroundColor<<Entity>> White
+}
+
+' ========== MODEL LAYER ==========
+package "com.example.padel_app.model" <<Rectangle>> {
   
-  class User {
-    -id: Long
-    -username: String
-    -email: String
-    -firstName: String
-    -lastName: String
-    -password: String
-    -declaredLevel: Level
-    -perceivedLevel: Level
-    -matchesPlayed: int
-    +getFullName(): String
+  class User <<Entity>> {
+    - id: Long {PK}
+    - username: String {unique}
+    - email: String {unique}
+    - firstName: String
+    - lastName: String
+    - password: String
+    - declaredLevel: Level
+    - perceivedLevel: Level
+    - matchesPlayed: int
+    - createdMatches: List<Match>
+    - registrations: List<Registration>
+    __
+    + getFullName(): String
+    + updateMatchesCount(): void
   }
   
-  class Match {
-    -id: Long
-    -location: String
-    -dateTime: LocalDateTime
-    -description: String
-    -requiredLevel: Level
-    -type: MatchType
-    -status: MatchStatus
-    -creator: User
-    -registrations: List<Registration>
-    -feedbacks: List<Feedback>
-    +getActiveRegistrationsCount(): int
-    +isFull(): boolean
+  class Match <<Entity>> {
+    - id: Long {PK}
+    - location: String
+    - dateTime: LocalDateTime
+    - description: String
+    - requiredLevel: Level
+    - type: MatchType
+    - status: MatchStatus
+    - creator: User {FK}
+    - registrations: List<Registration>
+    - feedbacks: List<Feedback>
+    __
+    + getActiveRegistrationsCount(): int
+    + isFull(): boolean
+    + isWaiting(): boolean
+    + isConfirmed(): boolean
+    + isFinished(): boolean
   }
   
-  class Registration {
-    -id: Long
-    -user: User
-    -match: Match
-    -status: RegistrationStatus
-    -registeredAt: LocalDateTime
+  class Registration <<Entity>> {
+    - id: Long {PK}
+    - user: User {FK}
+    - match: Match {FK}
+    - status: RegistrationStatus
+    - registeredAt: LocalDateTime
+    __
+    + isActive(): boolean
+    + cancel(): void
   }
   
-  class Feedback {
-    -id: Long
-    -author: User
-    -targetUser: User
-    -match: Match
-    -suggestedLevel: Level
-    -comment: String
-    -createdAt: LocalDateTime
+  class Feedback <<Entity>> {
+    - id: Long {PK}
+    - author: User {FK}
+    - targetUser: User {FK}
+    - match: Match {FK}
+    - suggestedLevel: Level
+    - comment: String
+    - createdAt: LocalDateTime
+    __
+    {unique: author_id + target_user_id + match_id}
   }
   
   enum Level {
@@ -76,171 +97,273 @@ package "model" {
   }
 }
 
-package "service" {
+' ========== SERVICE LAYER ==========
+package "com.example.padel_app.service" <<Rectangle>> {
   
   class MatchService {
-    -matchRepository: MatchRepository
-    -eventPublisher: ApplicationEventPublisher
-    -strategies: Map<String, MatchSortingStrategy>
-    +createMatch(request): Match
-    +joinMatch(matchId, userId): Registration
-    +leaveMatch(matchId, userId): void
-    +getMatchesOrderedByDate(): List<Match>
-    +getMatchesOrderedByPopularity(): List<Match>
-    +getMatchesOrderedByLevel(): List<Match>
+    - matchRepository: MatchRepository
+    - registrationService: RegistrationService
+    - eventPublisher: ApplicationEventPublisher
+    - strategies: Map<String, MatchSortingStrategy>
+    __
+    + createMatch(CreateMatchRequest): Match
+    + joinMatch(matchId: Long, userId: Long): Registration
+    + leaveMatch(matchId: Long, userId: Long): void
+    + finishMatch(matchId: Long): void
+    + getAllMatches(): List<Match>
+    + getMatchesSorted(sortType: String): List<Match>
+    + filterByStatus(status: MatchStatus): List<Match>
+    + filterByLevel(level: Level): List<Match>
+    __
+    - autoConfirmIfFull(match: Match): void
+    - publishMatchConfirmedEvent(match: Match): void
+    - publishMatchFinishedEvent(match: Match): void
   }
   
   class RegistrationService {
-    -registrationRepository: RegistrationRepository
-    +registerUser(match, user): Registration
-    +cancelRegistration(registrationId): void
-    +getActiveRegistrations(match): List<Registration>
+    - registrationRepository: RegistrationRepository
+    - matchRepository: MatchRepository
+    - userRepository: UserRepository
+    __
+    + registerUser(match: Match, user: User): Registration
+    + cancelRegistration(registrationId: Long): void
+    + getActiveRegistrations(match: Match): List<Registration>
+    + findByMatchAndUser(match: Match, user: User): Optional<Registration>
+    __
+    - validateRegistration(match: Match, user: User): void
   }
   
   class FeedbackService {
-    -feedbackRepository: FeedbackRepository
-    -userService: UserService
-    +createFeedback(request): Feedback
-    +updatePerceivedLevel(userId): void
+    - feedbackRepository: FeedbackRepository
+    - userRepository: UserRepository
+    - matchRepository: MatchRepository
+    __
+    + createFeedback(CreateFeedbackRequest): Feedback
+    + updatePerceivedLevel(userId: Long): void
+    + getFeedbacksForUser(userId: Long): List<Feedback>
+    + getPlayersForFeedback(matchId: Long, userId: Long): List<User>
+    __
+    - calculateAverageLevel(feedbacks: List<Feedback>): Level
+    - validateFeedback(request): void
+  }
+  
+  class UserService {
+    - userRepository: UserRepository
+    __
+    + createUser(User): User
+    + findById(id: Long): Optional<User>
+    + findAll(): List<User>
+    + updateUser(User): User
   }
   
   class NotificationService <<Singleton>> {
-    +sendMatchConfirmedNotification(match): void
-    +sendMatchFinishedNotification(match): void
+    __
+    + sendMatchConfirmedNotification(match: Match): void
+    + sendMatchFinishedNotification(match: Match): void
+    __
+    note: "Spring @Service (singleton scope)"
   }
 }
 
-package "event" {
-  
-  class MatchConfirmedEvent {
-    -match: Match
-    -timestamp: LocalDateTime
-  }
-  
-  class MatchFinishedEvent {
-    -match: Match
-    -timestamp: LocalDateTime
-  }
-}
-
-package "listener" {
-  
-  class MatchEventListener <<Observer>> {
-    -notificationService: NotificationService
-    +handleMatchConfirmed(event): void
-    +handleMatchFinished(event): void
-  }
-}
-
-package "strategy" {
+' ========== STRATEGY PATTERN ==========
+package "com.example.padel_app.strategy" <<Rectangle>> {
   
   interface MatchSortingStrategy <<Strategy>> {
-    +sort(matches: List<Match>): List<Match>
+    + {abstract} sort(matches: List<Match>): List<Match>
   }
   
-  class DateSortingStrategy {
-    +sort(matches: List<Match>): List<Match>
+  class DateSortingStrategy <<Strategy>> {
+    + sort(matches: List<Match>): List<Match>
+    __
+    note: "Ordina per dateTime ASC"
   }
   
-  class PopularitySortingStrategy {
-    +sort(matches: List<Match>): List<Match>
+  class PopularitySortingStrategy <<Strategy>> {
+    + sort(matches: List<Match>): List<Match>
+    __
+    note: "Ordina per activeRegistrations DESC"
   }
   
-  class LevelSortingStrategy {
-    +sort(matches: List<Match>): List<Match>
+  class LevelSortingStrategy <<Strategy>> {
+    + sort(matches: List<Match>): List<Match>
+    __
+    note: "Ordina per requiredLevel ASC"
   }
 }
 
-package "repository" {
+' ========== OBSERVER PATTERN ==========
+package "com.example.padel_app.event" <<Rectangle>> {
   
-  interface UserRepository {
-    +findByUsername(username): Optional<User>
-    +findByEmail(email): Optional<User>
+  class MatchConfirmedEvent extends ApplicationEvent {
+    - match: Match
+    - timestamp: LocalDateTime
+    __
+    + getMatch(): Match
+    + getTimestamp(): LocalDateTime
   }
   
-  interface MatchRepository {
-    +findByStatus(status): List<Match>
-    +findAllWithCreator(): List<Match>
-    +findByRequiredLevel(level): List<Match>
-  }
-  
-  interface RegistrationRepository {
-    +findByMatchAndUser(match, user): Optional<Registration>
-    +findByMatchAndStatus(match, status): List<Registration>
-  }
-  
-  interface FeedbackRepository {
-    +findByAuthorAndTargetUserAndMatch(...): Optional<Feedback>
-    +findByTargetUser(user): List<Feedback>
+  class MatchFinishedEvent extends ApplicationEvent {
+    - match: Match
+    - timestamp: LocalDateTime
+    __
+    + getMatch(): Match
+    + getTimestamp(): LocalDateTime
   }
 }
 
-package "controller" {
+package "com.example.padel_app.listener" <<Rectangle>> {
+  
+  class MatchEventListener <<Observer>> {
+    - notificationService: NotificationService
+    __
+    + handleMatchConfirmed(event: MatchConfirmedEvent): void {@EventListener}
+    + handleMatchFinished(event: MatchFinishedEvent): void {@EventListener}
+  }
+}
+
+' ========== REPOSITORY LAYER ==========
+package "com.example.padel_app.repository" <<Rectangle>> {
+  
+  interface UserRepository extends JpaRepository {
+    + findByUsername(username: String): Optional<User>
+    + findByEmail(email: String): Optional<User>
+  }
+  
+  interface MatchRepository extends JpaRepository {
+    + findByStatus(status: MatchStatus): List<Match>
+    + findAllWithCreator(): List<Match> {@Query with JOIN FETCH}
+    + findByRequiredLevel(level: Level): List<Match>
+  }
+  
+  interface RegistrationRepository extends JpaRepository {
+    + findByMatchAndUser(match: Match, user: User): Optional<Registration>
+    + findByMatchAndStatus(match: Match, status: RegistrationStatus): List<Registration>
+    + findByMatch(match: Match): List<Registration>
+  }
+  
+  interface FeedbackRepository extends JpaRepository {
+    + findByAuthorAndTargetUserAndMatch(author, target, match): Optional<Feedback>
+    + findByTargetUser(user: User): List<Feedback>
+    + findByMatch(match: Match): List<Feedback>
+  }
+}
+
+' ========== CONTROLLER LAYER ==========
+package "com.example.padel_app.controller" <<Rectangle>> {
   
   class WebController {
-    -matchService: MatchService
-    -userService: UserService
-    -registrationService: RegistrationService
-    -feedbackService: FeedbackService
-    -userContext: UserContext
-    +home(model): String
-    +myMatches(model): String
-    +matches(model, status, sort): String
-    +createMatch(request): String
-    +joinMatch(id): String
-    +leaveMatch(id): String
-    +finishMatch(id): String
-    +feedbackForm(id, model): String
-    +submitFeedback(id, targetUserId, suggestedLevel): String
+    - matchService: MatchService
+    - userService: UserService
+    - registrationService: RegistrationService
+    - feedbackService: FeedbackService
+    - userContext: UserContext
+    __
+    + home(model: Model): String
+    + myMatches(model: Model): String
+    + matches(model: Model, status: String, sort: String): String
+    + users(model: Model): String
+    + createMatchForm(model: Model): String
+    + createMatch(request: CreateMatchRequest): String
+    + joinMatch(id: Long): String
+    + leaveMatch(id: Long): String
+    + finishMatch(id: Long): String
+    + feedbackForm(id: Long, model: Model): String
+    + submitFeedback(matchId, targetUserId, suggestedLevel, comment): String
   }
 }
 
-' Relationships
-User "1" -- "*" Registration : registered >
-User "1" -- "*" Feedback : author >
-User "1" -- "*" Feedback : target >
-User "1" -- "*" Match : creates >
+' ========== RELATIONSHIPS ==========
 
-Match "1" -- "*" Registration : has >
-Match "1" -- "*" Feedback : has >
+' Model relationships
+User "1" -- "0..*" Match : creates >
+User "1" -- "0..*" Registration : has >
+User "1" -- "0..*" Feedback : writes >
+User "1" -- "0..*" Feedback : receives >
 
+Match "1" *-- "0..4" Registration : contains >
+Match "1" -- "0..*" Feedback : has >
+Match "*" -- "1" User : created by
+
+Registration "*" -- "1" User
+Registration "*" -- "1" Match
+
+Feedback "*" -- "1" User : author
+Feedback "*" -- "1" User : target
+Feedback "*" -- "1" Match
+
+' Service dependencies
 MatchService --> MatchRepository
-MatchService --> MatchSortingStrategy : uses >
-MatchService ..> MatchConfirmedEvent : publishes >
+MatchService --> RegistrationService
+MatchService "1" o-- "*" MatchSortingStrategy : uses strategies >
+MatchService ..> MatchConfirmedEvent : <<publishes>>
+MatchService ..> MatchFinishedEvent : <<publishes>>
 
 RegistrationService --> RegistrationRepository
+RegistrationService --> MatchRepository
+RegistrationService --> UserRepository
 
 FeedbackService --> FeedbackRepository
+FeedbackService --> UserRepository
+FeedbackService --> MatchRepository
 
-MatchEventListener ..> MatchConfirmedEvent : listens >
-MatchEventListener ..> MatchFinishedEvent : listens >
+UserService --> UserRepository
+
+' Strategy pattern
+DateSortingStrategy ..|> MatchSortingStrategy : <<implements>>
+PopularitySortingStrategy ..|> MatchSortingStrategy : <<implements>>
+LevelSortingStrategy ..|> MatchSortingStrategy : <<implements>>
+
+' Observer pattern
+MatchEventListener ..> MatchConfirmedEvent : <<listens>>
+MatchEventListener ..> MatchFinishedEvent : <<listens>>
 MatchEventListener --> NotificationService : uses >
 
-DateSortingStrategy ..|> MatchSortingStrategy
-PopularitySortingStrategy ..|> MatchSortingStrategy
-LevelSortingStrategy ..|> MatchSortingStrategy
-
+' Controller dependencies
 WebController --> MatchService
 WebController --> UserService
 WebController --> RegistrationService
 WebController --> FeedbackService
 
-note right of MatchSortingStrategy
-  Strategy Pattern:
-  Algoritmi di ordinamento
-  intercambiabili
+' Pattern annotations
+note top of MatchSortingStrategy
+  **STRATEGY PATTERN**
+  
+  Permette di selezionare dinamicamente
+  l'algoritmo di ordinamento a runtime.
+  
+  Context: MatchService
+  Strategies: Date, Popularity, Level
 end note
 
-note right of MatchEventListener
-  Observer Pattern:
-  Ascolta eventi di cambio
-  stato delle partite
+note top of MatchEventListener
+  **OBSERVER PATTERN**
+  
+  Spring Event Mechanism
+  
+  Publisher: MatchService
+  Events: MatchConfirmed, MatchFinished
+  Listener: MatchEventListener
+  
+  Disaccoppia pubblicazione da gestione
 end note
 
-note right of NotificationService
-  Singleton Pattern:
-  Unica istanza del
-  servizio notifiche
+note top of NotificationService
+  **SINGLETON PATTERN**
+  
+  Spring @Service annotation
+  garantisce singleton scope
+  
+  Una sola istanza gestisce
+  tutte le notifiche
+end note
+
+note bottom of Match
+  **Business Rules:**
+  - Max 4 players
+  - Auto-confirm at 4th player
+  - Creator can delete match
+  - Status transitions:
+    WAITING → CONFIRMED → FINISHED
 end note
 
 @enduml

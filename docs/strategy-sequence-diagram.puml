@@ -1,0 +1,176 @@
+@startuml Strategy Pattern - Sequence Diagram
+
+title Strategy Pattern: Dynamic Match Sorting
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Utente" as user #LightBlue
+participant ":WebController" as controller
+participant ":MatchService" as service <<Context>>
+database ":MatchRepository" as repo
+participant "strategies\n:Map<String, Strategy>" as strategyMap <<Spring Container>>
+participant ":DateSortingStrategy" as dateStrategy <<Strategy>>
+participant ":PopularitySortingStrategy" as popStrategy <<Strategy>>
+participant ":LevelSortingStrategy" as levelStrategy <<Strategy>>
+
+== Inizializzazione (Spring Autowiring) ==
+
+note over service, strategyMap #LightYellow
+  **Spring Dependency Injection**
+  Auto-wiring delle strategie nel Map
+end note
+
+strategyMap -> service: @Autowired strategies
+note right
+  Map<String, MatchSortingStrategy>:
+  - "date" → DateSortingStrategy
+  - "popularity" → PopularitySortingStrategy
+  - "level" → LevelSortingStrategy
+end note
+
+== Scenario 1: Ordinamento per Data ==
+
+user -> controller: GET /matches?sort=date
+activate controller
+
+controller -> service: getMatchesSorted("date")
+activate service
+
+service -> repo: findAllWithCreator()
+activate repo
+repo --> service: List<Match> (unsorted)
+deactivate repo
+
+note over service #LightYellow
+  **STRATEGY SELECTION**
+  Selezione runtime della strategia
+end note
+
+service -> strategyMap: get("date")
+activate strategyMap
+strategyMap --> service: DateSortingStrategy
+deactivate strategyMap
+
+service -> dateStrategy: sort(matches)
+activate dateStrategy
+
+note right of dateStrategy
+  **ALGORITMO**
+  Comparator.comparing(
+    Match::getDateTime
+  )
+end note
+
+dateStrategy -> dateStrategy: matches.stream()\n.sorted(...)\n.collect(toList())
+
+dateStrategy --> service: List<Match> (sorted by date ASC)
+deactivate dateStrategy
+
+service --> controller: List<Match>
+deactivate service
+
+controller --> user: matches.html (ordered by date)
+deactivate controller
+
+== Scenario 2: Ordinamento per Popolarità ==
+
+user -> controller: GET /matches?sort=popularity
+activate controller
+
+controller -> service: getMatchesSorted("popularity")
+activate service
+
+service -> repo: findAllWithCreator()
+activate repo
+repo --> service: List<Match> (unsorted)
+deactivate repo
+
+service -> strategyMap: get("popularity")
+activate strategyMap
+strategyMap --> service: PopularitySortingStrategy
+deactivate strategyMap
+
+service -> popStrategy: sort(matches)
+activate popStrategy
+
+note right of popStrategy
+  **ALGORITMO**
+  Comparator.comparing(
+    Match::getActiveRegistrationsCount
+  ).reversed()
+end note
+
+popStrategy -> popStrategy: matches.stream()\n.sorted(...)\n.collect(toList())
+
+popStrategy --> service: List<Match> (sorted by players DESC)
+deactivate popStrategy
+
+service --> controller: List<Match>
+deactivate service
+
+controller --> user: matches.html (ordered by popularity)
+deactivate controller
+
+== Scenario 3: Ordinamento per Livello ==
+
+user -> controller: GET /matches?sort=level
+activate controller
+
+controller -> service: getMatchesSorted("level")
+activate service
+
+service -> repo: findAllWithCreator()
+activate repo
+repo --> service: List<Match> (unsorted)
+deactivate repo
+
+service -> strategyMap: get("level")
+activate strategyMap
+strategyMap --> service: LevelSortingStrategy
+deactivate strategyMap
+
+service -> levelStrategy: sort(matches)
+activate levelStrategy
+
+note right of levelStrategy
+  **ALGORITMO**
+  Comparator.comparing(
+    Match::getRequiredLevel
+  )
+end note
+
+levelStrategy -> levelStrategy: matches.stream()\n.sorted(...)\n.collect(toList())
+
+levelStrategy --> service: List<Match> (sorted by level ASC)
+deactivate levelStrategy
+
+service --> controller: List<Match>
+deactivate service
+
+controller --> user: matches.html (ordered by level)
+deactivate controller
+
+== Risultato ==
+
+note over user, levelStrategy
+  **Vantaggi Strategy Pattern:**
+  
+  ✅ **Intercambiabilità**: Algoritmi scambiabili a runtime
+  ✅ **Open/Closed**: Nuove strategie senza modificare context
+  ✅ **Single Responsibility**: Ogni strategia incapsula un algoritmo
+  ✅ **Testabilità**: Facile testare ogni strategia in isolamento
+  
+  **Implementazione:**
+  - Context: MatchService
+  - Interface: MatchSortingStrategy
+  - Concrete Strategies: Date, Popularity, Level
+  - Selection: Map<String, Strategy> autowired da Spring
+  
+  **Possibili estensioni:**
+  - DistanceSortingStrategy (geolocalizzazione)
+  - SkillMatchSortingStrategy (livello simile a utente)
+  - AvailabilitySortingStrategy (posti disponibili)
+end note
+
+@enduml
