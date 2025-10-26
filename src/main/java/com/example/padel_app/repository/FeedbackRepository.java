@@ -19,6 +19,9 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     @Query("SELECT f FROM Feedback f JOIN FETCH f.author JOIN FETCH f.targetUser JOIN FETCH f.match WHERE f.targetUser = :targetUser")
     List<Feedback> findByTargetUser(User targetUser);
     
+    @Query("SELECT f FROM Feedback f JOIN FETCH f.author JOIN FETCH f.targetUser JOIN FETCH f.match WHERE f.author = :author AND f.match = :match")
+    List<Feedback> findByAuthorAndMatch(User author, Match match);
+    
     List<Feedback> findByMatch(Match match);
     
     Optional<Feedback> findByAuthorAndTargetUserAndMatch(User author, User targetUser, Match match);

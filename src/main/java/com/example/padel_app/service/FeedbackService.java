@@ -90,6 +90,10 @@ public class FeedbackService {
         return feedbackRepository.findByAuthor(user);
     }
     
+    public List<Feedback> getFeedbacksByAuthorAndMatch(User author, Match match) {
+        return feedbackRepository.findByAuthorAndMatch(author, match);
+    }
+    
     public List<Feedback> getFeedbacksByMatch(Match match) {
         return feedbackRepository.findByMatch(match);
     }

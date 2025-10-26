@@ -215,15 +215,26 @@ public class WebController {
             return "redirect:/my-matches";
         }
         
-        // Get players from registrations (exclude current user)
-        List<User> players = registrationService.getActiveRegistrationsByMatch(match).stream()
+        // Get feedbacks already given by current user for this match
+        List<com.example.padel_app.model.Feedback> feedbacksGiven = 
+            feedbackService.getFeedbacksByAuthorAndMatch(currentUser, match);
+        
+        // Get IDs of users already rated
+        java.util.Set<Long> alreadyRatedUserIds = feedbacksGiven.stream()
+            .map(f -> f.getTargetUser().getId())
+            .collect(java.util.stream.Collectors.toSet());
+        
+        // Get players from registrations (exclude current user AND already rated users)
+        List<User> availablePlayers = registrationService.getActiveRegistrationsByMatch(match).stream()
             .map(com.example.padel_app.model.Registration::getUser)
             .filter(u -> !u.getId().equals(currentUser.getId()))
+            .filter(u -> !alreadyRatedUserIds.contains(u.getId()))
             .collect(java.util.stream.Collectors.toList());
         
         model.addAttribute("match", match);
-        model.addAttribute("players", players);
+        model.addAttribute("players", availablePlayers);
         model.addAttribute("levels", Level.values());
+        model.addAttribute("allRated", availablePlayers.isEmpty());
         
         return "feedback";
     }

@@ -37,7 +37,16 @@
             <p th:text="${error}"></p>
         </div>
 
-        <form class="form-simple" th:action="@{/matches/{id}/feedback(id=${match.id})}" method="post">
+        <div th:if="${allRated}" class="info-box" style="background: #efe; border-left: 4px solid #3c3;">
+            <h4>✅ Feedback completati!</h4>
+            <p>Hai già dato feedback a tutti i giocatori di questa partita.</p>
+            <div class="form-actions">
+                <a th:href="@{/my-matches}" class="btn btn-primary">Torna alle Mie Partite</a>
+                <a th:href="@{/my-profile}" class="btn btn-secondary">Vedi il Mio Profilo</a>
+            </div>
+        </div>
+
+        <form th:unless="${allRated}" class="form-simple" th:action="@{/matches/{id}/feedback(id=${match.id})}" method="post">
             <div class="form-group">
                 <label for="targetUserId">Valuta il giocatore</label>
                 <select id="targetUserId" name="targetUserId" required>
