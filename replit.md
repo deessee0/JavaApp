@@ -131,6 +131,12 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
+- 2025-10-26: **FIX LAZY LOADING IN FEEDBACK FORM**
+  - RegistrationRepository.findByMatch(): Aggiunto @Query con JOIN FETCH r.user
+  - FIX: Eliminato LazyInitializationException quando si apriva il form feedback
+  - Template feedback.html: Ora può accedere a player.firstName, player.lastName, player.declaredLevel senza errori
+  - Query allineata con altre query repository che usano JOIN FETCH
+  - Testing: Form feedback funzionante per partite finite con roster completo di giocatori
 - 2025-10-26: **ADD PLAYER COUNTS TO MATCHES - COMPLETE FIX**
   - RegistrationRepository.countAllRegistrationsByMatch(): Nuova query per contare TUTTE le registrazioni
   - RegistrationService: Aggiunti getAllRegistrationsCount() e getAllRegistrationsByMatch()
