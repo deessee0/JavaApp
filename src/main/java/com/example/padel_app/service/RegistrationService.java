@@ -35,6 +35,10 @@ public class RegistrationService {
         return registrationRepository.findByMatchAndStatus(match, RegistrationStatus.JOINED);
     }
     
+    public List<Registration> getAllRegistrationsByMatch(Match match) {
+        return registrationRepository.findByMatch(match);
+    }
+    
     public boolean isUserRegisteredForMatch(User user, Match match) {
         return registrationRepository.existsByUserAndMatchAndStatus(user, match, RegistrationStatus.JOINED);
     }
@@ -45,6 +49,14 @@ public class RegistrationService {
     
     public List<Registration> getActiveRegistrationsByUser(User user) {
         return registrationRepository.findByUserAndStatus(user, RegistrationStatus.JOINED);
+    }
+    
+    public int getActiveRegistrationsCount(Match match) {
+        return registrationRepository.countActiveRegistrationsByMatch(match);
+    }
+    
+    public int getAllRegistrationsCount(Match match) {
+        return registrationRepository.countAllRegistrationsByMatch(match);
     }
     
     // Business logic: Join match with constraints

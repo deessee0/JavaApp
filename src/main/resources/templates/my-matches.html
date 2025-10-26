@@ -43,6 +43,7 @@
                     <div class="match-details">
                         <p>📅 <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data e ora</span></p>
                         <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
+                        <p>👥 <span th:text="${'Giocatori: ' + playerCounts[match.id] + '/4'}">Giocatori</span></p>
                         <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
                     </div>
 
@@ -77,6 +78,7 @@
                     <div class="match-details">
                         <p>📅 <span th:text="${#temporals.format(match.dateTime, 'dd/MM/yyyy HH:mm')}">Data e ora</span></p>
                         <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
+                        <p>👥 <span th:text="${'Giocatori: ' + playerCounts[match.id]}">Giocatori</span></p>
                         <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
                     </div>
 

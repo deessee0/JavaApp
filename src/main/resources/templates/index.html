@@ -48,9 +48,9 @@
                     <p>🏆 <span th:text="${match.requiredLevel.displayName}">Livello</span></p>
                     <p th:if="${match.description}">📝 <span th:text="${match.description}">Descrizione</span></p>
                     <p>
-                        <strong>Giocatori: <span th:text="${match.activeRegistrationsCount}">0</span>/4</strong>
+                        <strong>👥 Giocatori: <span th:text="${playerCounts[match.id]}">0</span>/4</strong>
                         <span class="progress-bar">
-                            <span class="progress-fill" th:style="'width: ' + ${match.activeRegistrationsCount * 25} + '%'"></span>
+                            <span class="progress-fill" th:style="'width: ' + ${playerCounts[match.id] * 25} + '%'"></span>
                         </span>
                     </p>
                 </div>
@@ -58,9 +58,9 @@
                 <div class="match-actions">
                     <form th:action="@{/matches/{id}/join(id=${match.id})}" method="post" style="display: inline;">
                         <button type="submit" class="btn btn-primary" 
-                                th:disabled="${match.activeRegistrationsCount >= 4}">
-                            <span th:if="${match.activeRegistrationsCount < 4}">Iscriviti</span>
-                            <span th:if="${match.activeRegistrationsCount >= 4}">Completa</span>
+                                th:disabled="${playerCounts[match.id] >= 4}">
+                            <span th:if="${playerCounts[match.id] < 4}">Iscriviti</span>
+                            <span th:if="${playerCounts[match.id] >= 4}">Completa</span>
                         </button>
                     </form>
                 </div>

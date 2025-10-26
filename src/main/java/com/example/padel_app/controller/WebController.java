@@ -38,8 +38,15 @@ public class WebController {
             .filter(m -> !registrationService.isUserRegistered(currentUser, m))
             .collect(java.util.stream.Collectors.toList());
         
+        // Calcola contatori giocatori per ogni partita disponibile
+        java.util.Map<Long, Integer> playerCounts = new java.util.HashMap<>();
+        for (Match match : availableMatches) {
+            playerCounts.put(match.getId(), registrationService.getActiveRegistrationsCount(match));
+        }
+        
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("availableMatches", availableMatches);
+        model.addAttribute("playerCounts", playerCounts);
         
         return "index";
     }
@@ -63,9 +70,21 @@ public class WebController {
             .sorted((m1, m2) -> m2.getDateTime().compareTo(m1.getDateTime()))
             .collect(java.util.stream.Collectors.toList());
         
+        // Calcola contatori giocatori per ogni partita
+        java.util.Map<Long, Integer> playerCounts = new java.util.HashMap<>();
+        // Per partite in corso: conta solo giocatori JOINED
+        for (Match match : myRegisteredMatches) {
+            playerCounts.put(match.getId(), registrationService.getActiveRegistrationsCount(match));
+        }
+        // Per partite finite: conta TUTTI i giocatori che hanno partecipato (JOINED + CANCELLED)
+        for (Match match : myFinishedMatches) {
+            playerCounts.put(match.getId(), registrationService.getAllRegistrationsCount(match));
+        }
+        
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("registeredMatches", myRegisteredMatches);
         model.addAttribute("finishedMatches", myFinishedMatches);
+        model.addAttribute("playerCounts", playerCounts);
         
         return "my-matches";
     }
@@ -224,8 +243,9 @@ public class WebController {
             .map(f -> f.getTargetUser().getId())
             .collect(java.util.stream.Collectors.toSet());
         
-        // Get players from registrations (exclude current user AND already rated users)
-        List<User> availablePlayers = registrationService.getActiveRegistrationsByMatch(match).stream()
+        // Get ALL players from match (including CANCELLED) since match is FINISHED
+        // This ensures feedback form shows all participants who actually played
+        List<User> availablePlayers = registrationService.getAllRegistrationsByMatch(match).stream()
             .map(com.example.padel_app.model.Registration::getUser)
             .filter(u -> !u.getId().equals(currentUser.getId()))
             .filter(u -> !alreadyRatedUserIds.contains(u.getId()))

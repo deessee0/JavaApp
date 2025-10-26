@@ -32,5 +32,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     @Query("SELECT COUNT(r) FROM Registration r WHERE r.match = :match AND r.status = 'JOINED'")
     int countActiveRegistrationsByMatch(Match match);
     
+    @Query("SELECT COUNT(r) FROM Registration r WHERE r.match = :match")
+    int countAllRegistrationsByMatch(Match match);
+    
     List<Registration> findByUserAndStatus(User user, RegistrationStatus status);
 }
