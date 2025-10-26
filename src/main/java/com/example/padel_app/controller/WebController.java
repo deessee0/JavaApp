@@ -169,14 +169,22 @@ public class WebController {
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
             
+            // Check if user is the creator
+            boolean isCreator = match.getCreator() != null && match.getCreator().getId().equals(currentUser.getId());
+            
             registrationService.leaveMatch(currentUser, match);
-            redirectAttributes.addFlashAttribute("success", "Ti sei disiscritto dalla partita! Ora è di nuovo disponibile.");
+            
+            if (isCreator) {
+                redirectAttributes.addFlashAttribute("success", "Partita eliminata con successo (eri il creatore).");
+            } else {
+                redirectAttributes.addFlashAttribute("success", "Ti sei disiscritto dalla partita!");
+            }
             
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         
-        return "redirect:/";
+        return "redirect:/my-matches";
     }
     
     // Finish match

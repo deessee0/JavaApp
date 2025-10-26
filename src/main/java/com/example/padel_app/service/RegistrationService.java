@@ -92,13 +92,19 @@ public class RegistrationService {
             throw new IllegalStateException("User already left this match");
         }
         
-        // Update status to cancelled
-        registration.setStatus(RegistrationStatus.CANCELLED);
-        registrationRepository.save(registration);
-        
-        log.info("User {} left match {} ({}/{} players remaining)", 
-                 user.getUsername(), match.getId(), 
-                 registrationRepository.countActiveRegistrationsByMatch(match), 4);
+        // Check if user is the creator - if so, delete the match entirely
+        if (match.getCreator() != null && match.getCreator().getId().equals(user.getId())) {
+            log.info("Creator {} leaving match {} - deleting entire match", user.getUsername(), match.getId());
+            matchService.deleteMatch(match.getId());
+        } else {
+            // Normal leave: just cancel the registration
+            registration.setStatus(RegistrationStatus.CANCELLED);
+            registrationRepository.save(registration);
+            
+            log.info("User {} left match {} ({}/{} players remaining)", 
+                     user.getUsername(), match.getId(), 
+                     registrationRepository.countActiveRegistrationsByMatch(match), 4);
+        }
     }
     
     @Transactional

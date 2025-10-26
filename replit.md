@@ -131,6 +131,12 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
+- 2025-10-26: **FIX LEAVE MATCH & DELETE ON CREATOR LEAVE**
+  - RegistrationService.leaveMatch(): Ora elimina partita se il creatore si disiscriveHibernate eliminazione a cascata rimuove tutte le registrazioni
+  - WebController.leaveMatch(): Redirect a my-matches, messaggio diverso se creatore vs normale leave
+  - Feedback form: confermato corretto - NO dropdown autore, usa sempre UserContext
+  - Sezione "Feedback che ho dato" già esistente in my-profile.html
+  - NOTA: POST /matches/{id}/leave non funziona da curl (405 error), ma funziona da browser con form
 - 2025-10-14: **FIX REGISTRATION FILTERING & FEEDBACK PAGE COMPLETE** 
   - RegistrationService.isUserRegistered(): Ora controlla solo status JOINED (non CANCELLED)
   - Fix: Partite tornano disponibili dopo disiscrizione (filtro home page corretto)
