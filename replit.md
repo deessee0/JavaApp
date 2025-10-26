@@ -56,9 +56,36 @@ The UI is designed for rapid demonstration, featuring a minimalist homepage, red
 -   **Spring Web**: For building web applications.
 -   **Spring Boot Actuator**: For monitoring and managing the application.
 -   **JaCoCo**: For code coverage reporting.
+## Diagrammi UML
+
+### Class Diagram Completo
+File: `docs/class-diagram.puml`
+
+Diagramma delle classi completo che mostra:
+- Tutte le entità del dominio (User, Match, Registration, Feedback)
+- Tutti i service e controller layers
+- **Tutti i 3 design pattern** evidenziati:
+  - **Observer Pattern**: Eventi + Listener
+  - **Strategy Pattern**: Interfaccia + 3 implementazioni concrete
+  - **Singleton Pattern**: NotificationService
+- Relazioni JPA (@OneToMany, @ManyToOne)
+- Package organization completa
+
+### Sequence Diagrams
+
+**Observer Pattern**: `docs/observer-sequence-diagram.puml`
+- Flusso completo pubblicazione evento MatchConfirmedEvent
+- Interazione Publisher → Event → Listener → NotificationService
+- Dimostra disaccoppiamento tra componenti
+
+**Strategy Pattern**: `docs/strategy-sequence-diagram.puml`
+- Selezione runtime della strategia di sorting
+- 3 scenari: ordinamento per data, popolarità, livello
+- Mostra Spring Dependency Injection delle strategie
+
 ## Testing e Coverage
 
-### Test Suite Completa (40 test totali) ✅
+### Test Suite Completa (59 test totali) ✅
 
 #### CompleteServiceTest (14 test - Integration Test)
 Test scenario-based per business logic completa con Spring context:
@@ -99,14 +126,39 @@ Test validation rules sistema feedback:
 - testFeedback_OnlyOnFinishedMatches
 - testFullFeedbackRound_AllPlayersToAllOthers
 
+#### MatchServiceEdgeCasesTest (12 test) ⭐ NUOVO
+Test edge cases per aumentare branch coverage:
+- testStrategyFallback_WhenStrategyNotFound (fallback quando strategia non esiste)
+- testSortingStrategy_WithEmptyList
+- testCheckAndConfirmMatch_AlreadyConfirmed
+- testCheckAndConfirmMatch_LessThan4Players
+- testFinishMatch_MatchNotFound, testFinishMatch_NotConfirmed
+- testFinishMatch_AlreadyFinished, testFinishMatch_Success
+- testGetMatchesByStatus_NoMatches, testGetMatchesByLevel_FilterCorrectly
+- testSaveMatch_UpdateExisting, testDeleteMatch_RemovesFromDatabase
+
+#### NotificationServiceTest (7 test) ⭐ NUOVO
+Test Singleton Pattern e NotificationService:
+- testSendMatchConfirmedNotification_LogsCorrectMessage
+- testSendMatchConfirmedNotification_DifferentMatches
+- testSendMatchFinishedNotification_LogsCorrectMessage
+- testSendMatchFinishedNotification_DifferentMatches
+- testNotifications_HandleNullLocation
+- testNotifications_MultipleCallsSafe
+- testSingletonPattern_SharedState
+
 #### PadelAppApplicationTests (1 test)
 - Context load test (verifica startup Spring)
 
-### Coverage JaCoCo Report
+### Coverage JaCoCo Report (Aggiornato - 59 test)
 Generato automaticamente dopo `mvnw test`:
-- **Instruction Coverage**: 54.1% (1387/2565 instructions)
-- **Line Coverage**: 53.5% (291/544 lines)  
-- **Branch Coverage**: 27.1% (23/85 branches)
+- **Instruction Coverage**: 54.8% (1405/2565 instructions)
+- **Line Coverage**: 54.2% (295/544 lines)  
+- **Branch Coverage**: 29.4% (25/85 branches)
+
+**Nuovi test aggiunti:**
+- MatchServiceEdgeCasesTest: 12 test per edge cases e branch coverage
+- NotificationServiceTest: 7 test per Singleton Pattern
 
 **Aree NON coperte (design choice):**
 - WebController (173 lines) - focus su business logic, non controller layer
