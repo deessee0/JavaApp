@@ -16,6 +16,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     
     List<Registration> findByUser(User user);
     
+    @Query("SELECT r FROM Registration r JOIN FETCH r.user WHERE r.match = :match")
     List<Registration> findByMatch(Match match);
     
     List<Registration> findByStatus(RegistrationStatus status);
