@@ -4,35 +4,38 @@ title Sistema Gestione Partite Padel - Class Diagram
 
 ' Packages
 package "model" {
-  
+
   class User {
     -id: Long
     -username: String
     -email: String
+    -password: String
     -firstName: String
     -lastName: String
-    -password: String
     -declaredLevel: Level
     -perceivedLevel: Level
-    -matchesPlayed: int
-    +getFullName(): String
+    -matchesPlayed: Integer
+    -registrations: List<Registration>
+    -givenFeedbacks: List<Feedback>
+    -receivedFeedbacks: List<Feedback>
   }
-  
+
   class Match {
     -id: Long
-    -location: String
-    -dateTime: LocalDateTime
-    -description: String
-    -requiredLevel: Level
     -type: MatchType
     -status: MatchStatus
+    -requiredLevel: Level
+    -dateTime: LocalDateTime
+    -location: String
+    -description: String
     -creator: User
+    -createdAt: LocalDateTime
     -registrations: List<Registration>
     -feedbacks: List<Feedback>
     +getActiveRegistrationsCount(): int
     +isFull(): boolean
   }
-  
+
   class Registration {
     -id: Long
     -user: User
@@ -40,7 +43,7 @@ package "model" {
     -status: RegistrationStatus
     -registeredAt: LocalDateTime
   }
-  
+
   class Feedback {
     -id: Long
     -author: User
@@ -50,26 +53,26 @@ package "model" {
     -comment: String
     -createdAt: LocalDateTime
   }
-  
+
   enum Level {
     PRINCIPIANTE
     INTERMEDIO
     AVANZATO
     PROFESSIONISTA
   }
-  
+
   enum MatchType {
     PROPOSTA
     FISSA
   }
-  
+
   enum MatchStatus {
     WAITING
     CONFIRMED
     FINISHED
     CANCELLED
   }
-  
+
   enum RegistrationStatus {
     JOINED
     CANCELLED
@@ -77,92 +80,148 @@ package "model" {
 }
 
 package "service" {
-  
+
   class MatchService {
     -matchRepository: MatchRepository
-    -eventPublisher: ApplicationEventPublisher
-    -strategies: Map<String, MatchSortingStrategy>
-    +createMatch(request): Match
-    +joinMatch(matchId, userId): Registration
-    +leaveMatch(matchId, userId): void
+    -registrationRepository: RegistrationRepository
+    -sortingStrategies: Map<String, MatchSortingStrategy>
+    +getAllMatches(): List<Match>
+    +getMatchesByStatus(status: MatchStatus): List<Match>
+    +getMatchesByLevel(level: Level): List<Match>
+    +getMatchesOrderedBy(strategy: String): List<Match>
     +getMatchesOrderedByDate(): List<Match>
     +getMatchesOrderedByPopularity(): List<Match>
     +getMatchesOrderedByLevel(): List<Match>
+    +getMatchById(id: Long): Optional<Match>
+    +saveMatch(match: Match): Match
+    +deleteMatch(id: Long): void
+    +checkAndConfirmMatch(match: Match): Match
+    +markExpiredMatchesAsFinished(): void
+    +finishMatch(id: Long): Match
   }
-  
+
   class RegistrationService {
     -registrationRepository: RegistrationRepository
-    +registerUser(match, user): Registration
-    +cancelRegistration(registrationId): void
-    +getActiveRegistrations(match): List<Registration>
+    -matchService: MatchService
+    +getActiveRegistrationsByMatch(match: Match): List<Registration>
+    +getActiveRegistrationsByUser(user: User): List<Registration>
+    +isUserRegistered(user: User, match: Match): boolean
+    +joinMatch(user: User, match: Match): Registration
+    +leaveMatch(user: User, match: Match): void
   }
-  
+
   class FeedbackService {
     -feedbackRepository: FeedbackRepository
-    -userService: UserService
-    +createFeedback(request): Feedback
-    +updatePerceivedLevel(userId): void
+    -userRepository: UserRepository
+    +createFeedback(author: User, target: User, match: Match, level: Level, comment: String): Feedback
+    +updatePerceivedLevel(userId: Long): void
+    +getFeedbacksByTargetUser(user: User): List<Feedback>
+    +getFeedbacksByAuthor(user: User): List<Feedback>
+    +getFeedbacksByMatch(match: Match): List<Feedback>
   }
-  
+
+  class UserService {
+    -userRepository: UserRepository
+    +getAllUsers(): List<User>
+    +getUserById(id: Long): Optional<User>
+    +getUsersByDeclaredLevel(level: Level): List<User>
+    +getUsersByPerceivedLevel(level: Level): List<User>
+    +updateDeclaredLevel(user: User, level: Level): User
+    +updatePerceivedLevel(user: User, level: Level): User
+    +incrementMatchesPlayed(user: User): User
+  }
+
+  class UserContext {
+    -userRepository: UserRepository
+    +getCurrentUser(): User
+  }
 }
 
 package "strategy" {
-  
+
   interface MatchSortingStrategy <<Strategy>> {
     +sort(matches: List<Match>): List<Match>
+    +getStrategyName(): String
   }
-  
+
   class DateSortingStrategy {
     +sort(matches: List<Match>): List<Match>
+    +getStrategyName(): String
   }
-  
+
   class PopularitySortingStrategy {
     +sort(matches: List<Match>): List<Match>
+    +getStrategyName(): String
   }
-  
+
   class LevelSortingStrategy {
     +sort(matches: List<Match>): List<Match>
+    +getStrategyName(): String
   }
 }
 
 package "repository" {
-  
+
   interface UserRepository {
     +findByUsername(username): Optional<User>
     +findByEmail(email): Optional<User>
+    +existsByUsername(username): boolean
+    +existsByEmail(email): boolean
+    +findByDeclaredLevel(level): List<User>
+    +findByPerceivedLevel(level): List<User>
+    +findAllOrderByMatchesPlayedDesc(): List<User>
   }
-  
+
   interface MatchRepository {
-    +findByStatus(status): List<Match>
     +findAllWithCreator(): List<Match>
-    +findByRequiredLevel(level): List<Match>
+    +findByStatusWithCreator(status): List<Match>
+    +findByRequiredLevelWithCreator(level): List<Match>
+    +findAllOrderByDateWithCreator(): List<Match>
+    +findAllOrderByPopularityWithCreator(): List<Match>
+    +findAllOrderByLevelWithCreator(): List<Match>
+    +findById(id): Optional<Match>
+    +save(match): Match
   }
-  
+
   interface RegistrationRepository {
-    +findByMatchAndUser(match, user): Optional<Registration>
     +findByMatchAndStatus(match, status): List<Registration>
+    +findByUserAndStatus(user, status): List<Registration>
+    +existsByUserAndMatchAndStatus(user, match, status): boolean
+    +countActiveRegistrationsByMatch(match): int
+    +save(registration): Registration
   }
-  
+
   interface FeedbackRepository {
-    +findByAuthorAndTargetUserAndMatch(...): Optional<Feedback>
+    +findByAuthor(author): List<Feedback>
     +findByTargetUser(user): List<Feedback>
+    +findByMatch(match): List<Feedback>
+    +findByAuthorAndTargetUserAndMatch(...): Optional<Feedback>
+    +getAverageLevelForUser(user): Double
+    +save(feedback): Feedback
   }
 }
 
 package "controller" {
-  
-  class MatchController {
-    -matchService: MatchService
-    +getAllMatches(sort, level): ResponseEntity
-    +createMatch(request): ResponseEntity
-    +joinMatch(id, userId): ResponseEntity
-  }
-  
+
   class WebController {
     -matchService: MatchService
     -userService: UserService
+    -registrationService: RegistrationService
+    -feedbackService: FeedbackService
+    -userContext: UserContext
     +home(model): String
-    +matches(model, status): String
+    +myMatches(model): String
+    +matches(level, sort, model): String
+    +createMatchForm(model): String
+    +createMatch(request, model): String
+    +joinMatch(id, redirectAttributes): String
+    +leaveMatch(id, redirectAttributes): String
+    +finishMatch(id, redirectAttributes): String
+    +feedbackForm(id, model): String
+    +submitFeedback(id, targetUserId, suggestedLevel, comment, redirectAttributes): String
+    +myProfile(model): String
+    +updateDeclaredLevel(declaredLevel, redirectAttributes): String
+    +users(model): String
   }
 }
 
@@ -176,17 +235,27 @@ Match "1" -- "*" Registration : has >
 Match "1" -- "*" Feedback : has >
 
 MatchService --> MatchRepository
+MatchService --> RegistrationRepository
 MatchService --> MatchSortingStrategy : uses >
+
 RegistrationService --> RegistrationRepository
+RegistrationService --> MatchService
 
 FeedbackService --> FeedbackRepository
+FeedbackService --> UserRepository
+
+UserService --> UserRepository
+UserContext --> UserRepository
 
 DateSortingStrategy ..|> MatchSortingStrategy
 PopularitySortingStrategy ..|> MatchSortingStrategy
 LevelSortingStrategy ..|> MatchSortingStrategy
 
-MatchController --> MatchService
 WebController --> MatchService
+WebController --> RegistrationService
+WebController --> FeedbackService
+WebController --> UserService
+WebController --> UserContext
 
 note right of MatchSortingStrategy
   Strategy Pattern:
