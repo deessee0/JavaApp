@@ -1,96 +1,138 @@
 @startuml Sequence Diagram - App Padel
 
-title Join Partita con Conferma Automatica - Sequence Diagram
+title Flussi Join Partita e Feedback - Sequence Diagram
 
 actor "Giocatore" as player
 participant "WebController" as web
-participant "MatchService" as service
-participant "MatchRepository" as repo
+participant "UserContext" as userCtx
+participant "UserRepository" as userRepo
+participant "MatchService" as matchService
+participant "MatchRepository" as matchRepo
 participant "RegistrationService" as regService
-participant "Logger" as logger
-database "Database" as db
+participant "RegistrationRepository" as regRepo
+participant "FeedbackService" as feedbackService
+participant "FeedbackRepository" as feedbackRepo
+participant "UserService" as userService
 
 == Join Partita ==
 
-player -> web: POST /api/matches/{id}/join
+player -> web: POST /matches/{id}/join
 activate web
 
-web -> service: joinMatch(matchId, userId)
-activate service
+web -> userCtx: getCurrentUser()
+activate userCtx
+userCtx -> userRepo: findByUsername("margherita")
+userRepo --> userCtx: User
+userCtx --> web: User
+deactivate userCtx
 
-service -> repo: findById(matchId)
-activate repo
-repo -> db: SELECT * FROM matches WHERE id = ?
-db --> repo: Match
-repo --> service: Match
-deactivate repo
+web -> matchService: getMatchById(id)
+activate matchService
+matchService -> matchRepo: findById(id)
+activate matchRepo
+matchRepo --> matchService: Optional<Match>
+deactivate matchRepo
+matchService --> web: Match
 
-service -> service: checkMatchAvailable()
-note right: Verifica stato WAITING\ne posti disponibili
+deactivate matchService
 
-service -> regService: registerUser(match, user)
+web -> regService: joinMatch(user, match)
 activate regService
+regService -> regRepo: existsByUserAndMatchAndStatus(user, match, JOINED)
+regRepo --> regService: boolean
 
-regService -> regService: checkDuplicateRegistration()
+regService -> regRepo: countActiveRegistrationsByMatch(match)
+regRepo --> regService: int
 
-regService -> db: INSERT INTO registrations
-db --> regService: Registration
-regService --> service: Registration
-deactivate regService
+regService -> regRepo: save(new Registration)
+regRepo --> regService: Registration
 
-service -> service: getActiveRegistrationsCount()
-alt Numero iscritti == 4
-    
-    service -> service: updateStatus(CONFIRMED)
-    service -> db: UPDATE matches SET status = 'CONFIRMED'
-    
-    service -> logger: info("Match {id} confermato")
-    activate logger
-    logger --> service: void
-    deactivate logger
-    
+regService -> matchService: checkAndConfirmMatch(match)
+activate matchService
+matchService -> regRepo: countActiveRegistrationsByMatch(match)
+regRepo --> matchService: int
+
+alt 4 giocatori raggiunti
+    matchService -> matchRepo: save(match with status CONFIRMED)
+    matchRepo --> matchService: Match
+    note right
+      Stato partita aggiornato e
+      loggato via MatchService
+    end note
+else meno di 4 giocatori
+    matchService --> regService: Match
 end
 
-service --> web: Registration
-deactivate service
+deactivate matchService
 
-web --> player: ResponseEntity<Registration>
+regService --> web: Registration
+
+deactivate regService
+
+web --> player: redirect con messaggio successo
+
 deactivate web
 
-== Sistema Feedback (dopo partita terminata) ==
+== Invio Feedback ==
 
-player -> web: POST /api/feedback
+player -> web: POST /matches/{id}/feedback
 activate web
 
-web -> service: createFeedback(request)
-activate service
+web -> userCtx: getCurrentUser()
+activate userCtx
+userCtx -> userRepo: findByUsername("margherita")
+userRepo --> userCtx: User
+userCtx --> web: User
+deactivate userCtx
 
-service -> service: validateFeedback()
-note right: Verifica:\n- Partita FINISHED\n- No feedback duplicato
+web -> matchService: getMatchById(id)
+activate matchService
+matchService -> matchRepo: findById(id)
+matchRepo --> matchService: Optional<Match>
+matchService --> web: Match
 
-service -> db: INSERT INTO feedbacks
-db --> service: Feedback
+deactivate matchService
 
-service -> service: updatePerceivedLevel(targetUserId)
+web -> userService: getUserById(targetUserId)
+activate userService
+userService -> userRepo: findById(targetUserId)
+userRepo --> userService: Optional<User>
+userService --> web: User
 
-service -> db: SELECT AVG(suggested_level)\nFROM feedbacks\nWHERE target_user_id = ?
-db --> service: avgLevel
+deactivate userService
 
-service -> db: UPDATE users\nSET perceived_level = ?
-db --> service: void
+web -> feedbackService: createFeedback(author, target, match, level, comment)
+activate feedbackService
+feedbackService -> feedbackRepo: findByAuthorAndTargetUserAndMatch(...)
+feedbackRepo --> feedbackService: Optional<Feedback>
 
-service --> web: Feedback
-deactivate service
+alt feedback già presente
+    feedbackService --> web: eccezione
+    deactivate feedbackService
+else nuovo feedback
+    feedbackService -> feedbackRepo: save(feedback)
+    feedbackRepo --> feedbackService: Feedback
 
-web --> player: ResponseEntity<Feedback>
+    feedbackService -> feedbackService: updatePerceivedLevel(targetUserId)
+    feedbackService -> userRepo: findById(targetUserId)
+    userRepo --> feedbackService: Optional<User>
+    feedbackService -> feedbackRepo: findByTargetUser(target)
+    feedbackRepo --> feedbackService: List<Feedback>
+    feedbackService -> userRepo: save(user con livello aggiornato)
+    userRepo --> feedbackService: User
+
+    feedbackService --> web: Feedback
+    deactivate feedbackService
+end
+
+web --> player: redirect /matches/{id}/feedback con flash message
+
 deactivate web
 
-note over player, db
-  Design Patterns applicati:
-
-  1. **Strategy**: MatchService usa diverse strategie di ordinamento
-  2. **Logging**: Le transizioni di stato vengono tracciate
-     direttamente dal servizio
+note over player, feedbackRepo
+  Pattern utilizzati:
+  1. Strategy per l'ordinamento delle partite (MatchService)
+  2. Aggiornamento livello percepito automatizzato
 end note
 
 @enduml
