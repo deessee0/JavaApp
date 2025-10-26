@@ -131,15 +131,17 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
-- 2025-10-26: **ADD PLAYER COUNTS TO MATCHES**
+- 2025-10-26: **ADD PLAYER COUNTS TO MATCHES - COMPLETE FIX**
   - RegistrationRepository.countAllRegistrationsByMatch(): Nuova query per contare TUTTE le registrazioni
-  - RegistrationService.getAllRegistrationsCount(): Metodo wrapper per contare tutti i partecipanti
-  - WebController.myMatches(): Aggiunto playerCounts Map con logica differenziata (JOINED per partite in corso, TUTTE per partite finite)
+  - RegistrationService: Aggiunti getAllRegistrationsCount() e getAllRegistrationsByMatch()
+  - WebController.myMatches(): playerCounts Map con logica differenziata (JOINED per partite in corso, TUTTE per partite finite)
   - WebController.home(): Aggiunto playerCounts Map per partite disponibili
-  - my-matches.html: Aggiunto contatore "Giocatori: X/4" per partite iscritte e "Giocatori: X" per partite finite
-  - index.html: Aggiornato per usare playerCounts[match.id] invece di match.activeRegistrationsCount
-  - FIX CRITICO: Partite FINISHED ora contano TUTTI i partecipanti (JOINED + CANCELLED) per evitare inconsistenze con form feedback
-  - Testing: Partite iscritte mostrano 2/4 e 4/4, partite finite mostrano 4, home mostra 2/4 con progress bar
+  - WebController.feedbackForm(): **FIX CRITICO** - Usa getAllRegistrationsByMatch() per mostrare TUTTI i partecipanti (anche CANCELLED)
+  - my-matches.html: "👥 Giocatori: X/4" (in corso) e "👥 Giocatori: X" (finite)
+  - index.html: Usa playerCounts[match.id] con progress bar
+  - **COERENZA GARANTITA**: Partite FINISHED contano TUTTI i giocatori (JOINED + CANCELLED), form feedback mostra stesso roster
+  - **TEST**: Partita finita con 4 giocatori → contatore "4" → form feedback mostra 3 persone (escluso utente corrente)
+  - Architect Review: ✅ PASS - Contatori e feedback roster allineati correttamente
 - 2025-10-26: **FIX FEEDBACK FORM - FILTER ALREADY RATED PLAYERS**
   - FeedbackRepository.findByAuthorAndMatch(): Nuova query con JOIN FETCH per recuperare feedback già dati
   - FeedbackService.getFeedbacksByAuthorAndMatch(): Nuovo metodo per filtrare giocatori già valutati
