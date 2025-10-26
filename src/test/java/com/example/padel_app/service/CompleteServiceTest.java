@@ -20,6 +20,38 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Test di integrazione completo per il service layer dell'applicazione Padel.
+ * 
+ * <h2>Scopo del file</h2>
+ * Questa classe verifica il corretto funzionamento dell'intero service layer attraverso
+ * test di integrazione che coinvolgono più componenti (service, repository, database).
+ * 
+ * <h2>@SpringBootTest vs Unit Test</h2>
+ * <ul>
+ *   <li><strong>@SpringBootTest</strong>: Carica l'intero contesto Spring, inclusi tutti i bean,
+ *       repository, service e configurazioni. Permette di testare l'interazione reale tra componenti.</li>
+ *   <li><strong>Unit Test</strong>: Testa singole classi in isolamento usando mock, senza Spring context.
+ *       È più veloce ma non verifica l'integrazione reale.</li>
+ * </ul>
+ * 
+ * <h2>@Transactional per rollback automatico</h2>
+ * L'annotazione @Transactional fa sì che ogni test venga eseguito in una transazione che viene
+ * automaticamente annullata (rollback) al termine del test. Questo garantisce che:
+ * <ul>
+ *   <li>Ogni test parte con un database pulito</li>
+ *   <li>I test non si influenzano a vicenda</li>
+ *   <li>Non è necessario pulire manualmente i dati dopo ogni test</li>
+ * </ul>
+ * 
+ * <h2>Setup dati di test con @BeforeEach</h2>
+ * Il metodo annotato con @BeforeEach viene eseguito prima di ogni test, creando un set
+ * di dati di test consistente (5 utenti e 1 partita). Questo assicura che ogni test
+ * parta dalle stesse condizioni iniziali.
+ * 
+ * @see org.springframework.boot.test.context.SpringBootTest
+ * @see org.springframework.transaction.annotation.Transactional
+ */
 @SpringBootTest
 @Transactional
 public class CompleteServiceTest {
@@ -114,6 +146,24 @@ public class CompleteServiceTest {
         testMatch = matchRepository.save(testMatch);
     }
 
+    /**
+     * Testa la creazione di una nuova partita.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Un utente esistente nel sistema</li>
+     *   <li><strong>WHEN</strong>: L'utente crea una nuova partita con tutti i dati necessari</li>
+     *   <li><strong>THEN</strong>: La partita viene salvata nel database con ID generato e stato WAITING</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Una partita appena creata deve essere inizialmente in stato WAITING (in attesa di giocatori)
+     * e deve avere tutti i campi obbligatori compilati (location, dateTime, level, creator).
+     * 
+     * <h3>Perché è importante</h3>
+     * Questo test verifica la funzionalità base dell'applicazione: la creazione di nuove partite.
+     * Se questo test fallisce, gli utenti non possono organizzare partite, rendendo l'app inutilizzabile.
+     */
     @Test
     void testCreateMatch() {
         Match newMatch = new Match();
@@ -133,6 +183,24 @@ public class CompleteServiceTest {
         assertEquals(testUser1, saved.getCreator());
     }
 
+    /**
+     * Testa l'iscrizione di un giocatore a una partita.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Una partita esistente in stato WAITING</li>
+     *   <li><strong>WHEN</strong>: Un utente si iscrive alla partita</li>
+     *   <li><strong>THEN</strong>: Viene creata una registrazione attiva collegata all'utente e alla partita</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Gli utenti devono potersi iscrivere alle partite disponibili. Ogni iscrizione crea un record
+     * di tipo Registration che collega l'utente alla partita.
+     * 
+     * <h3>Perché è importante</h3>
+     * Senza questa funzionalità, le partite rimarrebbero vuote. È fondamentale per permettere
+     * la formazione di gruppi di giocatori.
+     */
     @Test
     void testJoinMatch() {
         Registration reg = registrationService.joinMatch(testUser2, testMatch);
@@ -145,6 +213,25 @@ public class CompleteServiceTest {
         assertTrue(active.size() >= 1);
     }
 
+    /**
+     * Testa la conferma automatica della partita quando si raggiungono 4 giocatori.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Una partita in stato WAITING con meno di 4 giocatori</li>
+     *   <li><strong>WHEN</strong>: Si iscrivono progressivamente 4 giocatori</li>
+     *   <li><strong>THEN</strong>: Lo stato della partita passa automaticamente a CONFIRMED al 4° giocatore</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Una partita di padel richiede esattamente 4 giocatori (2vs2). Quando viene raggiunto
+     * questo numero, la partita deve essere automaticamente confermata e pronta per essere giocata.
+     * 
+     * <h3>Perché è importante</h3>
+     * Questo test verifica una business logic critica: l'auto-conferma delle partite.
+     * Garantisce che gli utenti vengano notificati automaticamente quando la partita è pronta,
+     * senza bisogno di intervento manuale.
+     */
     @Test
     void testAutoConfirmAt4Players() {
         // Join 4 players
@@ -164,6 +251,24 @@ public class CompleteServiceTest {
         assertEquals(MatchStatus.CONFIRMED, updated.getStatus());
     }
 
+    /**
+     * Testa il limite massimo di 4 giocatori per partita.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Una partita con già 4 giocatori iscritti</li>
+     *   <li><strong>WHEN</strong>: Un 5° giocatore tenta di iscriversi</li>
+     *   <li><strong>THEN</strong>: Il sistema lancia un'eccezione IllegalStateException</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Non possono esserci più di 4 giocatori in una partita di padel. Questa è una regola
+     * ferrea dello sport che il sistema deve far rispettare.
+     * 
+     * <h3>Perché è importante</h3>
+     * Questo test verifica che il sistema impedisca situazioni invalide. Senza questo controllo,
+     * potrebbero verificarsi overbooking con più di 4 giocatori, creando confusione e conflitti.
+     */
     @Test
     void testMaxPlayersLimit() {
         // Join 4 players
@@ -178,6 +283,24 @@ public class CompleteServiceTest {
         });
     }
 
+    /**
+     * Testa che uno stesso utente non possa iscriversi due volte alla stessa partita.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Un utente già iscritto a una partita</li>
+     *   <li><strong>WHEN</strong>: Lo stesso utente tenta di iscriversi nuovamente</li>
+     *   <li><strong>THEN</strong>: Il sistema lancia un'eccezione IllegalStateException</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Ogni utente può iscriversi solo una volta a ciascuna partita. Iscrizioni duplicate
+     * non hanno senso logico e causerebbero inconsistenze nei dati.
+     * 
+     * <h3>Perché è importante</h3>
+     * Protegge l'integrità dei dati e previene bug nell'interfaccia utente o errori di rete
+     * che potrebbero causare iscrizioni duplicate accidentali.
+     */
     @Test
     void testDuplicateRegistrationConstraint() {
         registrationService.joinMatch(testUser1, testMatch);
@@ -188,6 +311,24 @@ public class CompleteServiceTest {
         });
     }
 
+    /**
+     * Testa la cancellazione dell'iscrizione di un utente da una partita.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Un utente iscritto a una partita</li>
+     *   <li><strong>WHEN</strong>: L'utente decide di cancellarsi dalla partita</li>
+     *   <li><strong>THEN</strong>: La registrazione viene rimossa e il conteggio giocatori diminuisce</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Gli utenti devono poter annullare la loro partecipazione fino a quando la partita
+     * non è iniziata, permettendo ad altri di prendere il loro posto.
+     * 
+     * <h3>Perché è importante</h3>
+     * Garantisce flessibilità agli utenti che hanno imprevisti. Senza questa funzione,
+     * un utente impossibilitato a partecipare bloccherebbe inutilmente un posto.
+     */
     @Test
     void testLeaveMatch() {
         registrationService.joinMatch(testUser2, testMatch);
@@ -201,6 +342,24 @@ public class CompleteServiceTest {
         assertTrue(after.size() < countBefore);
     }
 
+    /**
+     * Testa la creazione di un feedback da un giocatore a un altro.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Due utenti che hanno giocato insieme in una partita</li>
+     *   <li><strong>WHEN</strong>: Un utente lascia un feedback sull'altro con livello suggerito e commento</li>
+     *   <li><strong>THEN</strong>: Il feedback viene salvato con tutti i riferimenti corretti</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Dopo ogni partita, i giocatori possono valutarsi a vicenda per aiutare il sistema
+     * a determinare il livello percepito di ciascun giocatore, migliorando il matchmaking.
+     * 
+     * <h3>Perché è importante</h3>
+     * Il sistema di feedback è fondamentale per identificare il vero livello dei giocatori
+     * e garantire partite equilibrate e divertenti per tutti.
+     */
     @Test
     void testCreateFeedback() {
         Feedback feedback = feedbackService.createFeedback(
@@ -213,6 +372,24 @@ public class CompleteServiceTest {
         assertEquals(Level.AVANZATO, feedback.getSuggestedLevel());
     }
 
+    /**
+     * Testa il vincolo di un solo feedback per coppia utente-partita.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Un utente che ha già lasciato feedback su un altro dopo una partita</li>
+     *   <li><strong>WHEN</strong>: Lo stesso utente tenta di lasciare un secondo feedback sulla stessa persona per la stessa partita</li>
+     *   <li><strong>THEN</strong>: Il sistema lancia un'eccezione RuntimeException</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Ogni giocatore può lasciare un solo feedback per ciascun compagno/avversario in ogni partita.
+     * Feedback multipli altererebbero ingiustamente il calcolo del livello percepito.
+     * 
+     * <h3>Perché è importante</h3>
+     * Previene abusi del sistema di rating (es. voti multipli per favorire o penalizzare un giocatore)
+     * e mantiene l'equità nella valutazione.
+     */
     @Test
     void testOneFeedbackPerUserPerMatch() {
         feedbackService.createFeedback(testUser1, testUser2, testMatch, Level.INTERMEDIO, "Bravo");
@@ -223,6 +400,25 @@ public class CompleteServiceTest {
         });
     }
 
+    /**
+     * Testa il calcolo automatico del livello percepito basato sui feedback ricevuti.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Un utente che ha ricevuto 3 feedback con livelli suggeriti diversi</li>
+     *   <li><strong>WHEN</strong>: Viene invocato il metodo updatePerceivedLevel</li>
+     *   <li><strong>THEN</strong>: Il livello percepito viene calcolato come media dei feedback (INTERMEDIO)</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Il livello percepito di un giocatore è la media aritmetica dei livelli suggeriti dai
+     * compagni di gioco nei vari feedback ricevuti. Questo valore è più affidabile del
+     * livello dichiarato autonomamente.
+     * 
+     * <h3>Perché è importante</h3>
+     * Il livello percepito basato su feedback reali migliora la qualità del matchmaking,
+     * evitando partite sbilanciate causate da autovalutazioni errate (troppo alte o troppo basse).
+     */
     @Test
     void testPerceivedLevelUpdate() {
         // Create multiple feedbacks
@@ -239,6 +435,24 @@ public class CompleteServiceTest {
         assertEquals(Level.INTERMEDIO, updated.getPerceivedLevel());
     }
 
+    /**
+     * Testa l'ordinamento delle partite per data (Strategy Pattern).
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Diverse partite con date diverse nel database</li>
+     *   <li><strong>WHEN</strong>: Viene richiesto l'ordinamento per data</li>
+     *   <li><strong>THEN</strong>: Le partite sono restituite in ordine cronologico ascendente</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * L'ordinamento per data mostra prima le partite più imminenti, aiutando gli utenti
+     * a trovare partite che si svolgeranno a breve.
+     * 
+     * <h3>Perché è importante</h3>
+     * Verifica che il Strategy Pattern funzioni correttamente per l'ordinamento temporale.
+     * Gli utenti tipicamente vogliono vedere prima le partite più vicine nel tempo.
+     */
     @Test
     void testStrategyDateSorting() {
         List<Match> sorted = matchService.getMatchesOrderedByDate();
@@ -250,6 +464,24 @@ public class CompleteServiceTest {
         }
     }
 
+    /**
+     * Testa l'ordinamento delle partite per popolarità (numero di iscritti).
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Partite con diversi numeri di giocatori iscritti</li>
+     *   <li><strong>WHEN</strong>: Viene richiesto l'ordinamento per popolarità</li>
+     *   <li><strong>THEN</strong>: Le partite sono ordinate in modo decrescente per numero di iscritti</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Le partite più popolari (con più iscritti) vengono mostrate per prime, indicando
+     * partite quasi complete e quindi più probabili di essere confermate presto.
+     * 
+     * <h3>Perché è importante</h3>
+     * Verifica il Strategy Pattern per la popolarità. Gli utenti preferiscono unirsi a
+     * partite quasi piene perché hanno maggiori probabilità di essere giocate.
+     */
     @Test
     void testStrategyPopularitySorting() {
         List<Match> sorted = matchService.getMatchesOrderedByPopularity();
@@ -261,6 +493,25 @@ public class CompleteServiceTest {
         }
     }
 
+    /**
+     * Testa l'ordinamento delle partite per livello richiesto.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Partite con diversi livelli richiesti (PRINCIPIANTE, INTERMEDIO, AVANZATO)</li>
+     *   <li><strong>WHEN</strong>: Viene richiesto l'ordinamento per livello</li>
+     *   <li><strong>THEN</strong>: Le partite sono ordinate in modo ascendente (dal più facile al più difficile)</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * L'ordinamento per livello aiuta i giocatori a trovare rapidamente partite adatte
+     * alle loro capacità, dalle più semplici alle più competitive.
+     * 
+     * <h3>Perché è importante</h3>
+     * Verifica il Strategy Pattern per il livello. Un buon matchmaking basato sul livello
+     * è essenziale per la soddisfazione degli utenti: partite troppo facili annoiano,
+     * troppo difficili scoraggiano.
+     */
     @Test
     void testStrategyLevelSorting() {
         List<Match> sorted = matchService.getMatchesOrderedByLevel();
@@ -272,6 +523,24 @@ public class CompleteServiceTest {
         }
     }
 
+    /**
+     * Testa il filtraggio delle partite per stato.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Partite in vari stati (WAITING, CONFIRMED, FINISHED)</li>
+     *   <li><strong>WHEN</strong>: Viene richiesto il filtro per uno stato specifico (es. WAITING)</li>
+     *   <li><strong>THEN</strong>: Vengono restituite solo le partite in quello stato</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * Gli utenti devono poter filtrare le partite per stato per trovare facilmente:
+     * partite aperte (WAITING), partite confermate (CONFIRMED) o storico (FINISHED).
+     * 
+     * <h3>Perché è importante</h3>
+     * Verifica che il filtraggio funzioni correttamente. Senza filtri efficaci, l'utente
+     * vedrebbe tutte le partite mescolate, rendendo difficile trovare quelle rilevanti.
+     */
     @Test
     void testFilterByStatus() {
         List<Match> waiting = matchService.getMatchesByStatus(MatchStatus.WAITING);
@@ -280,6 +549,24 @@ public class CompleteServiceTest {
         }
     }
 
+    /**
+     * Testa il filtraggio delle partite per livello richiesto.
+     * 
+     * <h3>Scenario (GIVEN-WHEN-THEN)</h3>
+     * <ul>
+     *   <li><strong>GIVEN</strong>: Partite con diversi livelli richiesti</li>
+     *   <li><strong>WHEN</strong>: Viene richiesto il filtro per un livello specifico (es. INTERMEDIO)</li>
+     *   <li><strong>THEN</strong>: Vengono restituite solo le partite di quel livello</li>
+     * </ul>
+     * 
+     * <h3>Business Rule</h3>
+     * I giocatori devono poter cercare partite adatte al proprio livello, escludendo
+     * quelle troppo facili o troppo difficili.
+     * 
+     * <h3>Perché è importante</h3>
+     * Il filtraggio per livello è fondamentale per l'esperienza utente. Permette ai giocatori
+     * di trovare rapidamente partite competitive e bilanciate, evitando frustrazioni.
+     */
     @Test
     void testFilterByLevel() {
         List<Match> intermediate = matchService.getMatchesByLevel(Level.INTERMEDIO);

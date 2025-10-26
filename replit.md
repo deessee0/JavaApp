@@ -56,3 +56,73 @@ The UI is designed for rapid demonstration, featuring a minimalist homepage, red
 -   **Spring Web**: For building web applications.
 -   **Spring Boot Actuator**: For monitoring and managing the application.
 -   **JaCoCo**: For code coverage reporting.
+## Testing e Coverage
+
+### Test Suite Completa (40 test totali) ✅
+
+#### CompleteServiceTest (14 test - Integration Test)
+Test scenario-based per business logic completa con Spring context:
+- testCreateMatch, testJoinMatch, testAutoConfirmAt4Players ⭐
+- testMaxPlayersLimit, testDuplicateRegistrationConstraint, testLeaveMatch
+- testCreateFeedback, testOneFeedbackPerUserPerMatch, testPerceivedLevelUpdate
+- testStrategyDateSorting, testStrategyPopularitySorting, testStrategyLevelSorting
+- testFilterByStatus, testFilterByLevel
+
+#### StrategyPatternTest (6 test - Unit Test)
+Test isolato per Strategy Pattern (no Spring context):
+- testDateSorting_AscendingOrder, testPopularitySorting_DescendingOrder
+- testLevelSorting_AscendingOrder, testStrategyInterchangeability
+- testEmptyList, testSingleMatch
+
+#### MatchBusinessLogicTest (7 test) ⭐ NUOVO
+Test regole business critiche:
+- testCreatorLeavingMatch_DeletesEntireMatch (creator lascia → match eliminato)
+- testNormalPlayerLeavingMatch_OnlyCancelsRegistration
+- testCannotLeaveMatch_IfNotRegistered, testCannotLeaveMatch_IfAlreadyLeft
+- testFinishMatch_ChangesStatusToFinished, testCannotFinishMatch_IfNotConfirmed
+- testPlayerCountAfterLeave_DocumentsBehavior
+
+#### ObserverPatternTest (5 test) ⭐ NUOVO
+Test Observer Pattern con @RecordApplicationEvents:
+- testMatchConfirmedEventPublishedWhen4PlayersJoin (verifica evento a 4 giocatori)
+- testMatchFinishedEventPublishedWhenMatchFinished
+- testNoEventPublishedIfLessThan4Players, testFinishMatchPublishesEvent
+- testMatchConfirmedEventContainsCorrectData
+
+#### FeedbackValidationTest (7 test) ⭐ NUOVO
+Test validation rules sistema feedback:
+- testCreateFeedback_BetweenPlayersOfSameMatch
+- testCannotGiveFeedbackToSelf (documenta comportamento)
+- testCannotGiveDuplicateFeedback (vincolo unicità DB)
+- testPerceivedLevelCalculation (algoritmo media livello)
+- testPerceivedLevel_NullWithoutFeedback
+- testFeedback_OnlyOnFinishedMatches
+- testFullFeedbackRound_AllPlayersToAllOthers
+
+#### PadelAppApplicationTests (1 test)
+- Context load test (verifica startup Spring)
+
+### Coverage JaCoCo Report
+Generato automaticamente dopo `mvnw test`:
+- **Instruction Coverage**: 54.1% (1387/2565 instructions)
+- **Line Coverage**: 53.5% (291/544 lines)  
+- **Branch Coverage**: 27.1% (23/85 branches)
+
+**Aree NON coperte (design choice):**
+- WebController (173 lines) - focus su business logic, non controller layer
+- UserService (18 lines) - CRUD semplice, bassa priorità
+- UserContext (2 lines) - utility class minimale
+
+**Aree BEN coperte:**
+- MatchService, RegistrationService, FeedbackService (core business logic)
+- Strategy Pattern implementations (100% copertura)
+- Observer Pattern (eventi e listener)
+- Model entities e validation rules
+
+### Approccio Testing Adottato
+- **Integration Tests** con @SpringBootTest per testare l'intera applicazione
+- **@Transactional** su test per rollback automatico (DB pulito)
+- **Scenario-based testing** (GIVEN-WHEN-THEN pattern)
+- **Focus su business rules critiche** invece di coverage percentuale alta
+- **Commenti didattici completi** in italiano per scopo universitario
+
