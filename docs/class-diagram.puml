@@ -177,18 +177,21 @@ package "repository" {
 
 package "controller" {
   
-  class MatchController {
-    -matchService: MatchService
-    +getAllMatches(sort, level): ResponseEntity
-    +createMatch(request): ResponseEntity
-    +joinMatch(id, userId): ResponseEntity
-  }
-  
   class WebController {
     -matchService: MatchService
     -userService: UserService
+    -registrationService: RegistrationService
+    -feedbackService: FeedbackService
+    -userContext: UserContext
     +home(model): String
-    +matches(model, status): String
+    +myMatches(model): String
+    +matches(model, status, sort): String
+    +createMatch(request): String
+    +joinMatch(id): String
+    +leaveMatch(id): String
+    +finishMatch(id): String
+    +feedbackForm(id, model): String
+    +submitFeedback(id, targetUserId, suggestedLevel): String
   }
 }
 
@@ -217,8 +220,10 @@ DateSortingStrategy ..|> MatchSortingStrategy
 PopularitySortingStrategy ..|> MatchSortingStrategy
 LevelSortingStrategy ..|> MatchSortingStrategy
 
-MatchController --> MatchService
 WebController --> MatchService
+WebController --> UserService
+WebController --> RegistrationService
+WebController --> FeedbackService
 
 note right of MatchSortingStrategy
   Strategy Pattern:

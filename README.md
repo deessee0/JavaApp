@@ -76,7 +76,7 @@ Il progetto dimostra l'applicazione pratica dei principi di Ingegneria del Softw
 #### 1. MVC (Model-View-Controller)
 - **Model**: Entità JPA (User, Match, Registration, Feedback)
 - **View**: Template Thymeleaf (HTML)
-- **Controller**: REST Controllers e Web Controllers
+- **Controller**: WebController per rendering pagine e gestione form
 
 #### 2. Repository Pattern
 - Interfacce estendono JpaRepository
@@ -131,8 +131,7 @@ src/main/java/com/example/padel_app/
 ├── config/                    # Configurazioni e inizializzazione
 │   └── DataSeeder.java       # Popolamento DB con dati demo
 ├── controller/                # Controllers MVC
-│   ├── MatchController.java  # API REST partite
-│   └── WebController.java    # Controllers pagine web
+│   └── WebController.java    # Controller principale per tutte le pagine web
 ├── event/                     # Eventi Observer pattern
 │   ├── MatchConfirmedEvent.java
 │   └── MatchFinishedEvent.java

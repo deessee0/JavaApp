@@ -83,17 +83,12 @@ Template Thymeleaf per renderizzazione HTML:
 #### Controller (Controllo)
 **Package**: `com.example.padel_app.controller`
 
-Due tipi di controller:
-
-**REST Controllers** (`MatchController`):
-- API RESTful per operazioni CRUD
-- Gestione richieste JSON
-- Endpoint per frontend SPA (futuro)
-
-**Web Controllers** (`WebController`):
-- Rendering pagine HTML
-- Gestione form submission
-- Redirect e model attributes
+**Web Controller** (`WebController`):
+- Gestisce tutte le richieste HTTP dell'applicazione
+- Rendering pagine HTML con Thymeleaf
+- Gestione form submission (POST requests)
+- Redirect e flash attributes per messaggi utente
+- Orchestrazione tra Service layer e View layer
 
 ---
 
