@@ -131,6 +131,14 @@ L'interfaccia è stata progettata per essere "demostrabile rapidamente" come ric
 - Test Spring Boot integration con @SpringBootTest
 
 ## Recent Changes
+- 2025-10-26: **FIX FEEDBACK FORM - FILTER ALREADY RATED PLAYERS**
+  - FeedbackRepository.findByAuthorAndMatch(): Nuova query con JOIN FETCH per recuperare feedback già dati
+  - FeedbackService.getFeedbacksByAuthorAndMatch(): Nuovo metodo per filtrare giocatori già valutati
+  - WebController.feedbackForm(): Ora filtra dropdown escludendo giocatori già valutati da Margherita
+  - feedback.html: Mostra messaggio "✅ Hai già dato feedback a tutti" quando lista vuota
+  - FIX: Eliminato errore "Feedback already exists" - giocatori già valutati non appaiono nel dropdown
+  - FIX: Eliminato warning "non-threadsafe access to session" con JOIN FETCH appropriati
+  - Testing: Match 8 (1 giocatore disponibile), Match 9 (1 giocatore disponibile)
 - 2025-10-26: **FIX LEAVE MATCH & DELETE ON CREATOR LEAVE**
   - RegistrationService.leaveMatch(): Ora elimina partita se il creatore si disiscriveHibernate eliminazione a cascata rimuove tutte le registrazioni
   - WebController.leaveMatch(): Redirect a my-matches, messaggio diverso se creatore vs normale leave
