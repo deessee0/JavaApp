@@ -59,10 +59,6 @@ externalPort = 3003
 localPort = 39569
 externalPort = 3002
 
-[[ports]]
-localPort = 39947
-externalPort = 5000
-
 [deployment]
 deploymentTarget = "autoscale"
 run = ["./mvnw", "spring-boot:run"]
