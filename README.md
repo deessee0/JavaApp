@@ -206,28 +206,133 @@ src/test/java/
 
 ## 🚀 Installazione e Avvio
 
-### Prerequisiti
+> **⚡ Quick Start**: Per avvio rapido, consulta [QUICKSTART.md](QUICKSTART.md)
+
+### ⚡ Metodo 1: Avvio Rapido con Script (Consigliato)
+
+**Prerequisiti**: 
 - Java 17 o superiore
-- Maven 3.6+ (oppure usa Maven Wrapper incluso)
+- Maven 3.6+ (oppure usa il wrapper `./mvnw` incluso)
 
-### Avvio Applicazione
-
+**Comandi**:
 ```bash
 # Clone repository
 git clone [repository-url]
 cd padel-app
 
-# Avvia applicazione
+# Avvio con script automatico
+chmod +x scripts/run-local.sh
+./scripts/run-local.sh
+
+# OPPURE con Maven Wrapper
 ./mvnw spring-boot:run
 ```
 
-L'applicazione sarà disponibile su: `http://localhost:5000`
+**L'applicazione sarà disponibile su**: http://localhost:5000
 
-### Database H2 Console
-- URL: `http://localhost:5000/h2-console`
+⏱️ **Tempo di avvio**: ~15 secondi  
+✅ **Database H2**: Pre-popolato con dati di test
+
+---
+
+### 🐳 Metodo 2: Docker (Production Ready)
+
+**Prerequisiti**: Docker e Docker Compose installati
+
+**Comandi**:
+```bash
+# Avvio con script automatico
+chmod +x scripts/run-docker.sh
+./scripts/run-docker.sh
+
+# OPPURE manualmente
+docker-compose up --build
+
+# In background
+docker-compose up -d
+
+# Visualizza logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+**Applicazione disponibile su**: http://localhost:5000
+
+**Nota**: Docker è un metodo bonus per mostrare competenze DevOps. Per la demo dell'esame, si consiglia il Metodo 1 per maggiore affidabilità.
+
+---
+
+### ✅ Verifica Installazione
+
+Dopo l'avvio, controlla che tutto funzioni:
+
+| Risorsa | URL | Descrizione |
+|---------|-----|-------------|
+| **App Homepage** | http://localhost:5000 | Interfaccia principale |
+| **H2 Console** | http://localhost:5000/h2-console | Database console |
+| **Health Check** | http://localhost:5000/actuator/health | Status applicazione |
+
+**Credenziali H2 Console**:
 - JDBC URL: `jdbc:h2:mem:padeldb`
 - Username: `sa`
-- Password: (vuota)
+- Password: (lascia vuoto)
+
+**Utente Demo Simulato**:
+- Nome: **Margherita Biffi**
+- Email: margherita.biffi@example.com
+- Livello: Intermedio
+
+---
+
+### 🧪 Esecuzione Test e Coverage
+
+```bash
+# Esegui test con script automatico
+chmod +x scripts/run-tests.sh
+./scripts/run-tests.sh
+
+# OPPURE manualmente
+./mvnw test
+
+# Genera report coverage JaCoCo
+./mvnw jacoco:report
+
+# Visualizza report HTML
+open target/site/jacoco/index.html  # macOS
+xdg-open target/site/jacoco/index.html  # Linux
+start target/site/jacoco/index.html  # Windows
+```
+
+**Test Suite**: 59 test totali  
+**Coverage Attuale**: 
+- Instruction: ~54.8%
+- Line: ~54.2%
+- Branch: ~29.4%
+
+**Nota**: Il coverage è focalizzato su **business logic** e **design patterns**, non su presentation layer (WebController intenzionalmente non testato per scelta didattica).
+
+---
+
+### 🛠️ Troubleshooting
+
+**Problema: Porta 5000 occupata**
+```bash
+# macOS/Linux - Libera la porta
+lsof -ti:5000 | xargs kill -9
+
+# Windows
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+```
+
+**Problema: Java version mismatch**
+```bash
+# Verifica versione
+java -version
+# Dovrebbe essere 17 o superiore
+```
 
 ## 📊 Diagrammi UML
 

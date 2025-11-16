@@ -3,6 +3,26 @@
 ## Overview
 This Spring Boot Java application manages padel matches, designed for a university project. It implements the MVC architecture, incorporates Observer, Strategy, and Singleton design patterns, and provides a streamlined web interface for quick demonstrations. The project aims to deliver a fully functional application ready for academic submission, showcasing key software engineering principles.
 
+## Deployment & Avvio Rapido
+
+### Script Automatici (Nuovo)
+Il progetto include script bash per semplificare avvio e testing:
+- **`scripts/run-local.sh`**: Avvio rapido con Maven (include controlli prerequisiti)
+- **`scripts/run-tests.sh`**: Esegue test suite + genera report JaCoCo
+- **`scripts/run-docker.sh`**: Avvio con Docker Compose
+
+### Docker Production-Ready
+- **Dockerfile**: Multi-stage build con Java 17 JDK → JRE Alpine (~150MB finale)
+- **docker-compose.yml**: Configurazione porta 5000, health checks, restart policy
+- **.dockerignore**: Build ottimizzato (esclude target/, .git/, docs/)
+
+### QUICKSTART.md
+Guida rapida per professori/revisori con:
+- Avvio in 30 secondi
+- Funzionalità da testare durante demo
+- Troubleshooting comuni
+- Checklist pre-consegna
+
 ## User Preferences
 I prefer the agent to act as a mentor, guiding me through the development process.
 I want to use Java 17 and Spring Boot 3.5.5.

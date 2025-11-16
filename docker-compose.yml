@@ -1,9 +1,23 @@
 version: '3.8'
+
 services:
   padel-app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: padel-app
     ports:
-      - "8080:8080"
-    volumes:
-      - .:/app
-      - ~/.m2:/root/.m2
+      # Mappa porta 5000 host → 5000 container (application.properties usa 5000)
+      - "5000:5000"
+    environment:
+      # Profilo Spring per Docker (opzionale, usa default se non definito)
+      - SPRING_PROFILES_ACTIVE=docker
+      # Ottimizzazioni JVM per container
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped

@@ -1,0 +1,503 @@
+Perfetto! Prima lasciami verificare esattamente quali test mancano analizzando il codice del progetto.Ecco il prompt completo per l'agente di coding:
+
+---
+
+# 🎯 PROMPT PER AGENTE DI CODING - Preparazione Progetto per Esame
+
+## 📋 CONTESTO DEL PROGETTO
+
+Sto completando un progetto universitario di Ingegneria del Software (Spring Boot Java) per la prova finale. Il progetto è una **applicazione di gestione partite di padel** e deve soddisfare requisiti specifici per la valutazione.
+
+### Stato Attuale
+- **Codice funzionale**: ✅ Applicazione completa e funzionante
+- **Architettura**: ✅ MVC implementato correttamente
+- **Design Patterns**: ✅ 3 pattern implementati (Observer, Strategy, Singleton)
+- **Test Coverage**: ❌ **54.8%** (SOTTO la soglia richiesta dell'80%)
+- **Documentazione**: ✅ README e ARCHITECTURE.md completi
+- **Docker**: ⚠️ Dockerfile presente ma non ottimizzato
+
+### Requisiti per Superare l'Esame
+1. **Test Coverage ≥ 80%** (requisito obbligatorio)
+2. **Documentazione completa** per avvio facile
+3. **Demo affidabile** durante l'orale
+4. **NO multithreading** (puntiamo a voto 18-26, non ≥27)
+
+---
+
+## 🎯 OBIETTIVI DA IMPLEMENTARE
+
+### PRIORITÀ ASSOLUTA (MUST-HAVE)
+
+#### 1. Implementare Test per WebController
+**PROBLEMA**: WebController ha 173 linee NON testate → causa il coverage basso.
+
+**TASK**: Crea il file `src/test/java/com/example/padel_app/controller/WebControllerTest.java`
+
+**REQUISITI**:
+- Usa `@SpringBootTest` e `@AutoConfigureMockMvc`
+- Testa **TUTTI** gli endpoint GET e POST del WebController
+- Usa pattern GIVEN-WHEN-THEN per chiarezza
+- Commenti in italiano (progetto universitario didattico)
+- Segui lo stesso stile dei test esistenti (CompleteServiceTest, MatchServiceEdgeCasesTest)
+
+**Endpoint da testare** (verifica nel codice WebController):
+```java
+// GET endpoints
+GET  /                          → testHomePage()
+GET  /matches                   → testMatchesPage()
+GET  /matches/new               → testCreateMatchPage()
+GET  /users                     → testUsersPage()
+GET  /my-matches                → testMyMatchesPage()
+GET  /matches/{id}/feedback     → testFeedbackPage()
+
+// POST endpoints
+POST /matches/create            → testCreateMatch()
+POST /matches/{id}/join         → testJoinMatch()
+POST /matches/{id}/leave        → testLeaveMatch()
+POST /matches/{id}/finish       → testFinishMatch()
+POST /feedback/submit           → testSubmitFeedback()
+```
+
+**NOTA IMPORTANTE**: L'app usa `UserContext` per simulare un utente loggato (Margherita Biffi). Nei test, crea un utente di test nel `@BeforeEach` setup.
+
+**ESEMPIO STRUTTURA**:
+```java
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+public class WebControllerTest {
+    
+    @Autowired
+    private MockMvc mockMvc;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private MatchRepository matchRepository;
+    
+    private User testUser;
+    
+    @BeforeEach
+    void setup() {
+        // Crea utente test
+        testUser = new User();
+        testUser.setUsername("testuser");
+        testUser.setEmail("test@test.com");
+        // ... altri campi
+        testUser = userRepository.save(testUser);
+    }
+    
+    @Test
+    @DisplayName("Homepage deve caricare lista partite e statistiche")
+    void testHomePage() throws Exception {
+        mockMvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("index"))
+            .andExpect(model().attributeExists("matches"));
+    }
+    
+    // ... altri test
+}
+```
+
+#### 2. (Opzionale) Test per UserService
+**PROBLEMA**: UserService ha 18 linee non testate (CRUD semplice).
+
+**DECISIONE**: Solo se coverage non raggiunge 80% dopo WebControllerTest.
+
+---
+
+### PRIORITÀ ALTA (SHOULD-HAVE)
+
+#### 3. Creare QUICKSTART.md
+**SCOPO**: Guida ultra-rapida per professore/revisore.
+
+**POSIZIONE**: `QUICKSTART.md` nella root del progetto.
+
+**CONTENUTO**:
+```markdown
+# 🚀 Quick Start - Padel App
+
+## Avvio Immediato (30 secondi)
+
+### Prerequisiti
+- Java 17
+- Maven (o usa il wrapper `./mvnw`)
+
+### Comandi
+
+```bash
+# Clona e avvia
+git clone [URL-REPO]
+cd padel-app
+./mvnw spring-boot:run
+```
+
+Apri browser: **http://localhost:5000**
+
+## Utente Demo
+- Utente simulato: **Margherita Biffi** (già loggata)
+- Dati pre-caricati: 10 utenti, 15 partite
+
+## Funzionalità da Testare
+1. **Homepage**: Statistiche e partite disponibili
+2. **Crea Partita**: Form creazione nuova partita
+3. **Join**: Unisciti a una partita (max 4 giocatori)
+4. **Auto-Conferma**: Al 4° giocatore → evento Observer
+5. **Feedback**: Dopo match terminato, valuta giocatori
+
+## Database H2
+- Console: http://localhost:5000/h2-console
+- JDBC URL: `jdbc:h2:mem:padeldb`
+- User: `sa` / Password: (vuota)
+
+## Test e Coverage
+
+```bash
+./mvnw test                    # Esegue tutti i test
+./mvnw jacoco:report          # Genera report coverage
+open target/site/jacoco/index.html  # Visualizza report
+```
+
+**Target Coverage**: ≥80%
+
+## Troubleshooting
+- **Porta occupata**: Cambia porta in `application.properties`
+- **Maven non trovato**: Usa `./mvnw` (wrapper incluso)
+```
+
+#### 4. Script di Avvio Facile
+**SCOPO**: Automatizzare l'avvio per la demo.
+
+**FILE 1**: `scripts/run-local.sh`
+```bash
+#!/bin/bash
+set -e
+
+echo "🚀 Avvio Padel App (metodo locale)..."
+echo ""
+echo "Prerequisiti:"
+echo "  ✅ Java 17"
+echo "  ✅ Maven (o wrapper)"
+echo ""
+
+# Check Java version
+if ! command -v java &> /dev/null; then
+    echo "❌ Java non trovato. Installa Java 17"
+    exit 1
+fi
+
+JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)
+if [ "$JAVA_VERSION" -lt 17 ]; then
+    echo "❌ Java 17+ richiesto. Versione attuale: $JAVA_VERSION"
+    exit 1
+fi
+
+echo "✅ Java version: $JAVA_VERSION"
+echo ""
+echo "📦 Avvio applicazione..."
+./mvnw spring-boot:run
+```
+
+**FILE 2**: `scripts/run-tests.sh`
+```bash
+#!/bin/bash
+set -e
+
+echo "🧪 Esecuzione Test Suite..."
+./mvnw test
+
+echo ""
+echo "📊 Generazione Report Coverage..."
+./mvnw jacoco:report
+
+echo ""
+echo "✅ Test completati!"
+echo "📈 Report disponibile: target/site/jacoco/index.html"
+echo ""
+echo "Per visualizzare:"
+echo "  macOS:   open target/site/jacoco/index.html"
+echo "  Linux:   xdg-open target/site/jacoco/index.html"
+echo "  Windows: start target/site/jacoco/index.html"
+```
+
+Rendi eseguibili: `chmod +x scripts/*.sh`
+
+#### 5. Aggiornare README.md
+**TASK**: Aggiungi/aggiorna sezione "Come Avviare il Progetto".
+
+**POSIZIONE**: Nella sezione esistente `## 🚀 Installazione e Avvio`.
+
+**NUOVO CONTENUTO** (sostituisci sezione esistente):
+```markdown
+## 🚀 Come Avviare il Progetto
+
+### ⚡ Metodo 1: Avvio Rapido (Consigliato)
+
+**Prerequisiti**: 
+- Java 17 o superiore
+- Maven 3.6+ (oppure usa il wrapper `./mvnw` incluso)
+
+**Comandi**:
+```bash
+# Clone repository
+git clone [URL-REPOSITORY]
+cd padel-app
+
+# Avvio con Maven Wrapper (consigliato)
+./mvnw spring-boot:run
+
+# OPPURE con script automatico
+chmod +x scripts/run-local.sh
+./scripts/run-local.sh
+```
+
+**L'applicazione sarà disponibile su**: http://localhost:5000
+
+⏱️ **Tempo di avvio**: ~15 secondi  
+✅ **Database H2**: Pre-popolato con dati di test
+
+---
+
+### 🐳 Metodo 2: Docker (Opzionale - Production Ready)
+
+**Prerequisiti**: Docker e Docker Compose installati
+
+**Comandi**:
+```bash
+# Build e avvio
+docker-compose up --build
+
+# In background
+docker-compose up -d
+
+# Stop
+docker-compose down
+```
+
+**Nota**: Docker è un metodo bonus per mostrare competenze DevOps. Per la demo dell'esame, si consiglia il Metodo 1 per maggiore affidabilità.
+
+---
+
+### ✅ Verifica Installazione
+
+Dopo l'avvio, controlla:
+
+| Risorsa | URL | Descrizione |
+|---------|-----|-------------|
+| **App Homepage** | http://localhost:5000 | Interfaccia principale |
+| **H2 Console** | http://localhost:5000/h2-console | Database console |
+| **Health Check** | http://localhost:5000/actuator/health | Status applicazione |
+
+**Credenziali H2**:
+- JDBC URL: `jdbc:h2:mem:padeldb`
+- Username: `sa`
+- Password: (lascia vuoto)
+
+---
+
+### 🧪 Esecuzione Test
+
+```bash
+# Esegui tutti i test (59+ test)
+./mvnw test
+
+# Genera report coverage JaCoCo
+./mvnw jacoco:report
+
+# Visualizza report HTML
+open target/site/jacoco/index.html  # macOS
+xdg-open target/site/jacoco/index.html  # Linux
+start target/site/jacoco/index.html  # Windows
+```
+
+**Coverage Target**: ≥80% (requisito esame)  
+**Coverage Attuale**: Verificabile nel report JaCoCo
+```
+
+---
+
+### PRIORITÀ MEDIA (NICE-TO-HAVE)
+
+#### 6. Correggere Dockerfile
+**PROBLEMA**: Dockerfile usa Java 21, ma progetto è Java 17.
+
+**FILE**: `Dockerfile` (root del progetto)
+
+**SOSTITUISCI CONTENUTO** con:
+```dockerfile
+# Multi-stage build per ottimizzazione
+FROM eclipse-temurin:17-jdk AS build
+WORKDIR /app
+
+# Copia solo pom.xml per caching dipendenze
+COPY pom.xml .
+COPY mvnw .
+COPY .mvn .mvn
+
+# Download dipendenze (layer cacheable)
+RUN ./mvnw dependency:go-offline -B
+
+# Copia codice sorgente
+COPY src ./src
+
+# Build applicazione (skip test per velocità)
+RUN ./mvnw clean package -DskipTests
+
+# Stage runtime - immagine leggera
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# Copia JAR dall'immagine build
+COPY --from=build /app/target/padel-app-0.0.1-SNAPSHOT.jar app.jar
+
+# Esponi porta 5000 (configurata in application.properties)
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
+  CMD wget --quiet --tries=1 --spider http://localhost:5000/actuator/health || exit 1
+
+# Avvio applicazione
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+#### 7. Correggere docker-compose.yml
+**PROBLEMA**: Porta mappata su 8080, ma app usa 5000.
+
+**FILE**: `docker-compose.yml`
+
+**SOSTITUISCI CONTENUTO** con:
+```yaml
+version: '3.8'
+
+services:
+  padel-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: padel-app
+    ports:
+      - "5000:5000"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+```
+
+#### 8. Creare .dockerignore
+**SCOPO**: Ottimizzare build Docker.
+
+**FILE**: `.dockerignore` (root progetto)
+
+**CONTENUTO**:
+```
+target/
+.git/
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+.env
+*.md
+!README.md
+docs/
+scripts/
+```
+
+---
+
+## 📝 LINEE GUIDA PER L'IMPLEMENTAZIONE
+
+### Stile Codice
+1. **Commenti in italiano** (progetto universitario)
+2. **Javadoc completi** con spiegazioni didattiche
+3. **Pattern GIVEN-WHEN-THEN** nei test
+4. **Nomi descrittivi** per metodi test: `testNomeEndpoint_ComportamentoAtteso()`
+
+### Testing
+- **Framework**: JUnit 5 + Spring Boot Test
+- **Assertions**: AssertJ (`assertThat()`) o JUnit (`assertEquals()`)
+- **Transactional**: Usa `@Transactional` su classe test per rollback automatico
+- **DisplayName**: Aggiungi `@DisplayName("...")` per descrizioni leggibili
+
+### Coerenza
+- Segui lo stile dei test esistenti (`CompleteServiceTest.java`, `MatchServiceEdgeCasesTest.java`)
+- Usa gli stessi pattern e convenzioni già presenti nel progetto
+
+---
+
+## ✅ CHECKLIST FINALE
+
+Dopo l'implementazione, verifica:
+
+```bash
+# 1. Test passano tutti
+./mvnw test
+# Output atteso: BUILD SUCCESS
+
+# 2. Coverage ≥ 80%
+./mvnw jacoco:report
+# Apri target/site/jacoco/index.html e verifica percentuale
+
+# 3. App si avvia correttamente
+./mvnw spring-boot:run
+# Verifica: http://localhost:5000 carica homepage
+
+# 4. Script funzionano
+./scripts/run-local.sh
+./scripts/run-tests.sh
+
+# 5. Docker funziona (opzionale)
+docker-compose up --build
+# Verifica: http://localhost:5000 carica homepage
+docker-compose down
+```
+
+---
+
+## 🚫 COSA **NON** FARE
+
+❌ **NO multithreading** (non richiesto per il nostro target di voto)  
+❌ **NO modifiche alla logica business** esistente (già funzionante)  
+❌ **NO refactoring** non necessario (rischio di rompere funzionalità)  
+❌ **NO test per classi di configurazione** (focus su Controller/Service)  
+❌ **NO dipendenze aggiuntive** nel pom.xml (usa solo quelle esistenti)
+
+---
+
+## 📊 PRIORITÀ ESECUZIONE
+
+Esegui in questo ordine:
+
+1. **WebControllerTest** (CRITICO - risolve coverage)
+2. **QUICKSTART.md** (importante per demo)
+3. **Scripts** run-local.sh e run-tests.sh
+4. **Aggiornamento README** sezione avvio
+5. **Dockerfile + docker-compose** (bonus, ma solo se tempo)
+
+---
+
+## 🎯 RISULTATO ATTESO
+
+Al termine dell'implementazione:
+
+- ✅ **Test Coverage**: 80-85% (da 54.8%)
+- ✅ **Documentazione**: QUICKSTART.md + README aggiornato
+- ✅ **Scripts**: Avvio automatizzato con un comando
+- ✅ **Docker**: Funzionante e documentato (opzionale)
+- ✅ **Progetto pronto** per consegna e demo esame
+
+**Tempo stimato implementazione**: 2-3 ore
+
+---
+
+Procedi con l'implementazione seguendo le priorità indicate. Inizia da WebControllerTest per risolvere il problema critico del coverage.
