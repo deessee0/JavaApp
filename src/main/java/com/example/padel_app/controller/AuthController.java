@@ -192,10 +192,13 @@ public class AuthController {
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         
-        log.info("Tentativo di login per email: {}", email);
+        // Normalizza email a lowercase per evitare problemi case-sensitivity
+        String normalizedEmail = email.trim().toLowerCase();
+        
+        log.info("Tentativo di login per email: {}", normalizedEmail);
         
         // STEP 1: Cerca user per email nel database
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
         
         if (userOpt.isEmpty()) {
             // Email non trovata
@@ -309,10 +312,13 @@ public class AuthController {
             @RequestParam Level declaredLevel,
             RedirectAttributes redirectAttributes) {
         
-        log.info("Tentativo registrazione nuovo user: {} ({})", username, email);
+        // Normalizza email a lowercase per consistenza
+        String normalizedEmail = email.trim().toLowerCase();
+        
+        log.info("Tentativo registrazione nuovo user: {} ({})", username, normalizedEmail);
         
         // STEP 1: Verifica che email non sia già usata
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             log.warn("Registrazione fallita: email {} già esistente", email);
             redirectAttributes.addFlashAttribute("error", 
                 "Email già registrata. Usa un'altra email o fai login.");
@@ -330,7 +336,7 @@ public class AuthController {
         // STEP 3: Crea nuovo User
         User newUser = new User();
         newUser.setUsername(username);
-        newUser.setEmail(email);
+        newUser.setEmail(normalizedEmail);  // Salva email normalizzata
         newUser.setPassword(password);  // ⚠️ In produzione: passwordEncoder.encode(password)
         newUser.setFirstName(firstName);
         newUser.setLastName(lastName);

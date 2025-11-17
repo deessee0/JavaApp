@@ -11,6 +11,7 @@ import com.example.padel_app.service.FeedbackService;
 import com.example.padel_app.service.UserSessionService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -66,6 +67,7 @@ import java.util.List;
  */
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class WebController {
     
     /**
@@ -112,33 +114,54 @@ public class WebController {
      * @return Il nome del template Thymeleaf da renderizzare ("index.html")
      */
     @GetMapping("/")
-    public String home(HttpSession session, Model model) {
+    public String home(
+            HttpSession session,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false, defaultValue = "date") String sort,
+            Model model) {
         // Verifica autenticazione
         User currentUser = userSessionService.getCurrentUser(session);
         if (currentUser == null) {
             return "redirect:/login";
         }
         
-        // Filtra le partite disponibili (a cui l'utente NON è già iscritto)
-        // Usa Stream API Java 8+ per una programmazione funzionale
-        List<Match> availableMatches = matchService.getAllMatches().stream()
+        // STEP 1: Ottieni tutte le partite (con filtro level opzionale)
+        List<Match> allMatches;
+        if (level != null && !level.isEmpty()) {
+            try {
+                Level levelEnum = Level.valueOf(level.toUpperCase());
+                allMatches = matchService.getMatchesByLevel(levelEnum);
+            } catch (IllegalArgumentException e) {
+                // Level non valido, prendi tutte le partite
+                log.warn("Invalid level filter: {}, falling back to all matches", level);
+                allMatches = matchService.getAllMatches();
+            }
+        } else {
+            allMatches = matchService.getAllMatches();
+        }
+        
+        // STEP 2: Applica sempre l'ordinamento usando Strategy Pattern (anche se level era invalido)
+        allMatches = matchService.sortMatches(allMatches, sort != null ? sort : "date");
+        
+        // STEP 3: Filtra solo partite disponibili (non già iscritto, stato WAITING/CONFIRMED)
+        List<Match> availableMatches = allMatches.stream()
             .filter(m -> m.getStatus() == MatchStatus.WAITING || m.getStatus() == MatchStatus.CONFIRMED)
             .filter(m -> !registrationService.isUserRegistered(currentUser, m))
             .collect(java.util.stream.Collectors.toList());
         
-        // Calcola il numero di giocatori iscritti per ogni partita
+        // STEP 4: Calcola player count per ogni partita
         java.util.Map<Long, Integer> playerCounts = new java.util.HashMap<>();
         for (Match match : availableMatches) {
             playerCounts.put(match.getId(), registrationService.getActiveRegistrationsCount(match));
         }
         
-        // Aggiungi gli attributi al Model: saranno disponibili nel template Thymeleaf
+        // STEP 5: Passa dati al template
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("availableMatches", availableMatches);
         model.addAttribute("playerCounts", playerCounts);
+        model.addAttribute("level", level);
+        model.addAttribute("sort", sort);
         
-        // Restituisce il nome del template (senza estensione)
-        // Spring cercherà "templates/index.html"
         return "index";
     }
     
@@ -177,34 +200,64 @@ public class WebController {
      */
     @GetMapping("/my-matches")
     @Transactional(readOnly = true)
-    public String myMatches(HttpSession session, Model model) {
+    public String myMatches(
+            HttpSession session,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "date") String sort,
+            Model model) {
         // Verifica autenticazione
         User currentUser = userSessionService.getCurrentUser(session);
         if (currentUser == null) {
             return "redirect:/login";
         }
         
-        // Partite future a cui l'utente è iscritto
-        List<Match> myRegisteredMatches = registrationService.getActiveRegistrationsByUser(currentUser).stream()
+        // STEP 1: Ottieni TUTTE le partite dell'utente (active + finished)
+        // Usa getRegistrationsByUser() invece di getActiveRegistrationsByUser() per includere anche FINISHED
+        List<Match> allMyMatches = registrationService.getRegistrationsByUser(currentUser).stream()
             .map(com.example.padel_app.model.Registration::getMatch)
+            .collect(java.util.stream.Collectors.toList());
+        
+        // STEP 2: Dividi tra registrate (non terminate) e finite
+        List<Match> myRegisteredMatches = allMyMatches.stream()
             .filter(m -> m.getStatus() != MatchStatus.FINISHED)
-            .sorted((m1, m2) -> m1.getDateTime().compareTo(m2.getDateTime()))
             .collect(java.util.stream.Collectors.toList());
         
-        // Partite già giocate (passate)
-        List<Match> myFinishedMatches = registrationService.getActiveRegistrationsByUser(currentUser).stream()
-            .map(com.example.padel_app.model.Registration::getMatch)
+        List<Match> myFinishedMatches = allMyMatches.stream()
             .filter(m -> m.getStatus() == MatchStatus.FINISHED)
-            .sorted((m1, m2) -> m2.getDateTime().compareTo(m1.getDateTime()))
             .collect(java.util.stream.Collectors.toList());
         
-        // Calcola contatori giocatori per ogni partita
+        // STEP 3: Applica filtro per stato (opzionale) SOLO alla sezione pertinente
+        if (status != null && !status.isEmpty()) {
+            try {
+                MatchStatus statusEnum = MatchStatus.valueOf(status.toUpperCase());
+                
+                // Se filtro per FINISHED: myFinishedMatches contiene già solo FINISHED, registered rimane intatta
+                if (statusEnum == MatchStatus.FINISHED) {
+                    // Non serve filtrare myFinishedMatches (già solo FINISHED dallo STEP 2)
+                    // myRegisteredMatches rimane invariata → mostra partite attive
+                }
+                // Se filtro per WAITING/CONFIRMED: filtra SOLO registeredMatches, lascia finished intatta
+                else {
+                    myRegisteredMatches = myRegisteredMatches.stream()
+                        .filter(m -> m.getStatus() == statusEnum)
+                        .collect(java.util.stream.Collectors.toList());
+                    // myFinishedMatches rimane invariata → mostra partite terminate
+                }
+            } catch (IllegalArgumentException e) {
+                // Status non valido, ignora filtro
+                log.warn("Invalid status filter: {}, showing all matches", status);
+            }
+        }
+        
+        // STEP 4: Applica ordinamento usando Strategy Pattern a entrambe le liste
+        myRegisteredMatches = matchService.sortMatches(myRegisteredMatches, sort);
+        myFinishedMatches = matchService.sortMatches(myFinishedMatches, sort);
+        
+        // STEP 5: Calcola contatori giocatori
         java.util.Map<Long, Integer> playerCounts = new java.util.HashMap<>();
-        // Per partite in corso: conta solo giocatori JOINED
         for (Match match : myRegisteredMatches) {
             playerCounts.put(match.getId(), registrationService.getActiveRegistrationsCount(match));
         }
-        // Per partite finite: conta TUTTI i giocatori che hanno partecipato (JOINED + CANCELLED)
         for (Match match : myFinishedMatches) {
             playerCounts.put(match.getId(), registrationService.getAllRegistrationsCount(match));
         }
@@ -213,6 +266,8 @@ public class WebController {
         model.addAttribute("registeredMatches", myRegisteredMatches);
         model.addAttribute("finishedMatches", myFinishedMatches);
         model.addAttribute("playerCounts", playerCounts);
+        model.addAttribute("status", status);
+        model.addAttribute("sort", sort);
         
         return "my-matches";
     }
@@ -250,18 +305,22 @@ public class WebController {
         
         List<Match> matches;
         
-        // Applica filtro per livello se fornito
+        // STEP 1: Applica filtro per livello se fornito
         if (level != null && !level.isEmpty()) {
             try {
                 Level levelEnum = Level.valueOf(level.toUpperCase());
                 matches = matchService.getMatchesByLevel(levelEnum);
             } catch (IllegalArgumentException e) {
+                // Level non valido, prendi tutte le partite
+                log.warn("Invalid level filter: {}, falling back to all matches", level);
                 matches = matchService.getAllMatches();
             }
         } else {
-            // Applica ordinamento usando il pattern Strategy
-            matches = matchService.getMatchesOrderedBy(sort);
+            matches = matchService.getAllMatches();
         }
+        
+        // STEP 2: Applica sempre ordinamento usando Strategy Pattern (anche se level era invalido)
+        matches = matchService.sortMatches(matches, sort != null ? sort : "date");
         
         model.addAttribute("matches", matches);
         model.addAttribute("level", level);

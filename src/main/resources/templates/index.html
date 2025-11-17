@@ -28,7 +28,37 @@
         <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
 
         <h2>Partite Disponibili</h2>
-        <p style="color: #666; margin-bottom: 1.5rem;">Iscriviti alle partite programmate dai padel club</p>
+        <p style="color: #666; margin-bottom: 1rem;">Iscriviti alle partite programmate dai padel club</p>
+
+        <!-- Filtri e Ordinamento Partite -->
+        <div class="filter-container" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <form method="get" action="/" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: end;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="level" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Filtra per livello:</label>
+                    <select id="level" name="level" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Tutti i livelli</option>
+                        <option value="PRINCIPIANTE" th:selected="${level == 'PRINCIPIANTE'}">Principiante</option>
+                        <option value="INTERMEDIO" th:selected="${level == 'INTERMEDIO'}">Intermedio</option>
+                        <option value="AVANZATO" th:selected="${level == 'AVANZATO'}">Avanzato</option>
+                        <option value="PROFESSIONISTA" th:selected="${level == 'PROFESSIONISTA'}">Professionista</option>
+                    </select>
+                </div>
+                
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="sort" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ordina per:</label>
+                    <select id="sort" name="sort" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="date" th:selected="${sort == 'date' or sort == null}">Data (più vicine)</option>
+                        <option value="popularity" th:selected="${sort == 'popularity'}">Popolarità (più iscritti)</option>
+                        <option value="level" th:selected="${sort == 'level'}">Livello richiesto</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">Applica Filtri</button>
+                    <a href="/" class="btn btn-secondary" style="padding: 0.75rem 1rem; text-decoration: none; white-space: nowrap;">Reset</a>
+                </div>
+            </form>
+        </div>
 
         <div class="empty-state" th:if="${availableMatches.empty}">
             <p>🎾 Nessuna partita disponibile al momento</p>

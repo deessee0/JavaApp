@@ -171,6 +171,32 @@ public class MatchService {
     }
     
     /**
+     * Ordina una lista di partite secondo una strategia.
+     * 
+     * Questo metodo è utile quando hai già una lista filtrata di partite
+     * e vuoi applicare l'ordinamento senza rifare il fetch dal database.
+     * 
+     * @param matches lista di partite da ordinare
+     * @param strategy nome strategia: "date", "popularity", "level"
+     * @return lista partite ordinate secondo strategia
+     */
+    public List<Match> sortMatches(List<Match> matches, String strategy) {
+        String strategyKey = strategy + "Sorting";
+        MatchSortingStrategy sortingStrategy = sortingStrategies.get(strategyKey);
+        
+        if (sortingStrategy != null) {
+            log.debug("Sorting {} matches using {} strategy", matches.size(), sortingStrategy.getStrategyName());
+            return sortingStrategy.sort(matches);
+        }
+        
+        // Fallback: ordina per data
+        log.warn("Strategy {} not found, sorting by date as fallback", strategy);
+        return matches.stream()
+            .sorted((m1, m2) -> m1.getDateTime().compareTo(m2.getDateTime()))
+            .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
      * Trova partita per ID
      * 
      * Optional perché potrebbe non esistere

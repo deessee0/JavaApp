@@ -51,7 +51,7 @@
                     <div>
                         <p style="color: #666; margin-bottom: 0.25rem; font-size: 0.9rem;">Livello Percepito (dai feedback)</p>
                         <p style="font-size: 1.2rem; font-weight: 600; margin: 0;">
-                            ⭐ <span th:text="${currentUser.perceivedLevel.displayName}">Intermedio</span>
+                            ⭐ <span th:text="${currentUser.perceivedLevel != null ? currentUser.perceivedLevel.displayName : 'Non ancora disponibile'}">Intermedio</span>
                         </p>
                     </div>
                 </div>

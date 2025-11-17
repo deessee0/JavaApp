@@ -23,6 +23,35 @@
         <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
         <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
 
+        <!-- Filtri per le mie partite -->
+        <div class="filter-container" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            <form method="get" action="/my-matches" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: end;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="status" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Filtra per stato:</label>
+                    <select id="status" name="status" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Tutte le partite</option>
+                        <option value="WAITING" th:selected="${status == 'WAITING'}">In attesa</option>
+                        <option value="CONFIRMED" th:selected="${status == 'CONFIRMED'}">Confermate</option>
+                        <option value="FINISHED" th:selected="${status == 'FINISHED'}">Terminate</option>
+                    </select>
+                </div>
+                
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="sort" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ordina per:</label>
+                    <select id="sort" name="sort" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="date" th:selected="${sort == 'date' or sort == null}">Data (più vicine)</option>
+                        <option value="popularity" th:selected="${sort == 'popularity'}">Popolarità (più iscritti)</option>
+                        <option value="level" th:selected="${sort == 'level'}">Livello richiesto</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">Applica Filtri</button>
+                    <a href="/my-matches" class="btn btn-secondary" style="padding: 0.75rem 1rem; text-decoration: none; white-space: nowrap;">Reset</a>
+                </div>
+            </form>
+        </div>
+
         <!-- Partite a cui sono iscritta -->
         <section style="margin-bottom: 2rem;">
             <h2>📅 Partite a cui sono iscritta</h2>
