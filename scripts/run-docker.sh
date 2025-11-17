@@ -27,14 +27,14 @@ fi
 echo "✅ Docker installato"
 echo ""
 
-# Check Docker Compose
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo "❌ ERRORE: Docker Compose non trovato"
-    echo "   Installa Docker Compose o usa Docker Desktop (include Compose)"
+# Check se Docker è in esecuzione
+if ! docker ps &> /dev/null; then
+    echo "❌ ERRORE: Docker non è in esecuzione"
+    echo "   Avvia Docker Desktop/daemon e riprova"
     exit 1
 fi
 
-echo "✅ Docker Compose disponibile"
+echo "✅ Docker is running"
 echo ""
 
 # ========== BUILD E AVVIO ==========
@@ -45,7 +45,22 @@ echo "   (Può richiedere 2-3 minuti la prima volta)"
 echo "================================================"
 echo ""
 
-docker-compose up --build -d
+# Rileva quale comando Docker Compose è disponibile
+if docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    echo "❌ ERRORE: Docker Compose non trovato"
+    echo "   Installa Docker Compose o usa Docker Desktop (include Compose)"
+    exit 1
+fi
+
+echo "✅ Usando: $COMPOSE_CMD"
+echo ""
+
+# Build e avvio con il comando rilevato
+$COMPOSE_CMD up --build -d
 
 echo ""
 echo "================================================"
@@ -58,10 +73,10 @@ echo "  💾 H2 Console:   http://localhost:5000/h2-console"
 echo "  ❤️  Health Check: http://localhost:5000/actuator/health"
 echo ""
 echo "Comandi utili:"
-echo "  - Visualizza logs:    docker-compose logs -f"
-echo "  - Verifica health:    docker-compose ps"
-echo "  - Ferma applicazione: docker-compose down"
-echo "  - Restart:            docker-compose restart"
+echo "  - Visualizza logs:    $COMPOSE_CMD logs -f"
+echo "  - Verifica health:    $COMPOSE_CMD ps"
+echo "  - Ferma applicazione: $COMPOSE_CMD down"
+echo "  - Restart:            $COMPOSE_CMD restart"
 echo ""
 echo "⏳ Attendi ~40 secondi per l'avvio completo"
 echo "   (health check start-period configurato)"

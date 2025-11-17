@@ -5,11 +5,31 @@ This Spring Boot Java application manages padel matches, designed for a universi
 
 ## Deployment & Avvio Rapido
 
-### Script Automatici (Nuovo)
-Il progetto include script bash per semplificare avvio e testing:
-- **`scripts/run-local.sh`**: Avvio rapido con Maven (include controlli prerequisiti)
-- **`scripts/run-tests.sh`**: Esegue test suite + genera report JaCoCo
-- **`scripts/run-docker.sh`**: Avvio con Docker Compose
+### Script Automatici Multi-Piattaforma ✅
+Il progetto include script **Linux/Mac (.sh) e Windows (.bat)** per semplificare avvio e testing:
+
+**Avvio Locale (richiede Java 17+):**
+- **Linux/Mac:** `./scripts/run-local.sh`
+- **Windows:** `scripts\run-local.bat`
+- Include controlli prerequisiti (Java version check)
+- Porta 5000: http://localhost:5000
+- Login demo: margherita.biffi@padel.it / password123
+
+**Test Automatici (59 test):**
+- **Linux/Mac:** `./scripts/run-tests.sh`
+- **Windows:** `scripts\run-tests.bat`
+- Esegue test suite completa
+- Genera report JaCoCo coverage in `target/site/jacoco/index.html`
+- **Tutti i 59 test passano** ✅
+
+**Docker Production-Ready:**
+- **Linux/Mac:** `./scripts/run-docker.sh`
+- **Windows:** `scripts\run-docker.bat`
+- Build multi-stage (JDK → JRE Alpine, ~150MB)
+- Supporta sia `docker compose` (nuovo) che `docker-compose` (vecchio)
+- Health check automatico (~40s per startup completo)
+
+**Guida completa:** Vedi `scripts/README.md` per troubleshooting e dettagli
 
 ### Docker Production-Ready
 - **Dockerfile**: Multi-stage build con Java 17 JDK → JRE Alpine (~150MB finale)
