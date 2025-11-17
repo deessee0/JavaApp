@@ -8,7 +8,8 @@ import com.example.padel_app.service.MatchService;
 import com.example.padel_app.service.RegistrationService;
 import com.example.padel_app.service.UserService;
 import com.example.padel_app.service.FeedbackService;
-import com.example.padel_app.service.UserContext;
+import com.example.padel_app.service.UserSessionService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -75,7 +76,7 @@ public class WebController {
     private final UserService userService;
     private final RegistrationService registrationService;
     private final FeedbackService feedbackService;
-    private final UserContext userContext;
+    private final UserSessionService userSessionService;
     
     /**
      * Home page - Mostra le partite disponibili per l'utente corrente.
@@ -111,8 +112,12 @@ public class WebController {
      * @return Il nome del template Thymeleaf da renderizzare ("index.html")
      */
     @GetMapping("/")
-    public String home(Model model) {
-        User currentUser = userContext.getCurrentUser();
+    public String home(HttpSession session, Model model) {
+        // Verifica autenticazione
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
         
         // Filtra le partite disponibili (a cui l'utente NON è già iscritto)
         // Usa Stream API Java 8+ per una programmazione funzionale
@@ -172,8 +177,12 @@ public class WebController {
      */
     @GetMapping("/my-matches")
     @Transactional(readOnly = true)
-    public String myMatches(Model model) {
-        User currentUser = userContext.getCurrentUser();
+    public String myMatches(HttpSession session, Model model) {
+        // Verifica autenticazione
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
         
         // Partite future a cui l'utente è iscritto
         List<Match> myRegisteredMatches = registrationService.getActiveRegistrationsByUser(currentUser).stream()
@@ -228,9 +237,16 @@ public class WebController {
      */
     @GetMapping("/matches")
     public String matches(
+            HttpSession session,
             @RequestParam(required = false) String level,
             @RequestParam(required = false, defaultValue = "date") String sort,
             Model model) {
+        
+        // Verifica autenticazione
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
         
         List<Match> matches;
         
@@ -261,7 +277,13 @@ public class WebController {
      * @return Il nome del template "users.html"
      */
     @GetMapping("/users")
-    public String users(Model model) {
+    public String users(HttpSession session, Model model) {
+        // Verifica autenticazione
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+        
         List<User> users = userService.getAllUsers();
         model.addAttribute("users", users);
         return "users";
@@ -282,7 +304,13 @@ public class WebController {
      * @return Il nome del template "create-match.html"
      */
     @GetMapping("/matches/create")
-    public String createMatchForm(Model model) {
+    public String createMatchForm(HttpSession session, Model model) {
+        // Verifica autenticazione
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+        
         model.addAttribute("matchRequest", new CreateMatchRequest());
         model.addAttribute("levels", Level.values());
         return "create-match";
@@ -360,9 +388,12 @@ public class WebController {
      */
     @PostMapping("/matches/create")
     @Transactional
-    public String createMatch(CreateMatchRequest request, Model model) {
+    public String createMatch(HttpSession session, CreateMatchRequest request, Model model) {
         try {
-            User currentUser = userContext.getCurrentUser();
+            User currentUser = userSessionService.getCurrentUser(session);
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
             
             // Crea l'oggetto Match dai dati del form
             Match match = new Match();
@@ -430,9 +461,12 @@ public class WebController {
      * @return Redirect alla home page
      */
     @PostMapping("/matches/{id}/join")
-    public String joinMatch(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+    public String joinMatch(HttpSession session, @PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
-            User currentUser = userContext.getCurrentUser();
+            User currentUser = userSessionService.getCurrentUser(session);
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
             
@@ -464,9 +498,12 @@ public class WebController {
      * @return Redirect alla pagina "my-matches"
      */
     @PostMapping("/matches/{id}/leave")
-    public String leaveMatch(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+    public String leaveMatch(HttpSession session, @PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
-            User currentUser = userContext.getCurrentUser();
+            User currentUser = userSessionService.getCurrentUser(session);
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
             
@@ -495,14 +532,33 @@ public class WebController {
      * Solo dopo che una partita è terminata, i giocatori possono lasciare feedback
      * sul livello percepito degli altri partecipanti.
      * 
+     * <p>
+     * <b>Autorizzazione:</b> Solo il creatore della partita può terminarla.
+     * 
      * @param id ID della partita da terminare
      * @param redirectAttributes Per messaggi flash
      * @return Redirect alla pagina "my-matches"
      */
     @PostMapping("/matches/{id}/finish")
-    public String finishMatch(@PathVariable Long id,
+    public String finishMatch(HttpSession session,
+                             @PathVariable Long id,
                              RedirectAttributes redirectAttributes) {
         try {
+            // Verifica autenticazione
+            User currentUser = userSessionService.getCurrentUser(session);
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
+            
+            // Verifica che l'utente sia il creatore della partita
+            Match match = matchService.getMatchById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
+            
+            if (match.getCreator() == null || !match.getCreator().getId().equals(currentUser.getId())) {
+                redirectAttributes.addFlashAttribute("error", "Solo il creatore della partita può terminarla.");
+                return "redirect:/my-matches";
+            }
+            
             matchService.finishMatch(id);
             redirectAttributes.addFlashAttribute("success", "Partita terminata! Puoi dare feedback ai giocatori.");
             
@@ -534,8 +590,11 @@ public class WebController {
      */
     @GetMapping("/matches/{id}/feedback")
     @Transactional(readOnly = true)
-    public String feedbackForm(@PathVariable Long id, Model model) {
-        User currentUser = userContext.getCurrentUser();
+    public String feedbackForm(HttpSession session, @PathVariable Long id, Model model) {
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
         Match match = matchService.getMatchById(id)
             .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
         
@@ -590,13 +649,17 @@ public class WebController {
      * @return Redirect al form di feedback (per valutare altri giocatori)
      */
     @PostMapping("/matches/{id}/feedback")
-    public String submitFeedback(@PathVariable Long id,
+    public String submitFeedback(HttpSession session,
+                                 @PathVariable Long id,
                                  @RequestParam Long targetUserId,
                                  @RequestParam String suggestedLevel,
                                  @RequestParam(required = false) String comment,
                                  RedirectAttributes redirectAttributes) {
         try {
-            User currentUser = userContext.getCurrentUser();
+            User currentUser = userSessionService.getCurrentUser(session);
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
             Match match = matchService.getMatchById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partita non trovata"));
             User targetUser = userService.getUserById(targetUserId)
@@ -630,8 +693,11 @@ public class WebController {
      * @return Il nome del template "my-profile.html"
      */
     @GetMapping("/my-profile")
-    public String myProfile(Model model) {
-        User currentUser = userContext.getCurrentUser();
+    public String myProfile(HttpSession session, Model model) {
+        User currentUser = userSessionService.getCurrentUser(session);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
         
         // Recupera feedback ricevuti e dati
         List<com.example.padel_app.model.Feedback> feedbackReceived = 
@@ -685,10 +751,14 @@ public class WebController {
      * @return Redirect alla pagina profilo
      */
     @PostMapping("/my-profile/update-level")
-    public String updateDeclaredLevel(@RequestParam String declaredLevel,
+    public String updateDeclaredLevel(HttpSession session,
+                                      @RequestParam String declaredLevel,
                                       RedirectAttributes redirectAttributes) {
         try {
-            User currentUser = userContext.getCurrentUser();
+            User currentUser = userSessionService.getCurrentUser(session);
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
             userService.updateDeclaredLevel(currentUser, Level.valueOf(declaredLevel));
             redirectAttributes.addFlashAttribute("success", "Livello dichiarato aggiornato con successo!");
         } catch (Exception e) {

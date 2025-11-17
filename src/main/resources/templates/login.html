@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 App Padel</h1>
+            <p>Gestione partite tra sconosciuti</p>
+        </div>
+
+        <div class="auth-container" style="max-width: 500px; margin: 3rem auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h2 style="text-align: center; margin-bottom: 2rem;">Login</h2>
+
+            <!-- Messaggi di successo -->
+            <div th:if="${success}" class="alert alert-success" style="background: #d4edda; border-left: 4px solid #28a745; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                <p th:text="${success}" style="margin: 0; color: #155724;"></p>
+            </div>
+
+            <!-- Messaggi di errore -->
+            <div th:if="${error}" class="alert alert-error" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                <p th:text="${error}" style="margin: 0; color: #721c24;"></p>
+            </div>
+
+            <!-- Form Login -->
+            <form method="post" th:action="@{/login}">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">
+                        📧 Email
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        required 
+                        placeholder="tua@email.com"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">
+                        🔒 Password
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required 
+                        placeholder="La tua password"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box;">
+                </div>
+
+                <button 
+                    type="submit" 
+                    class="btn btn-primary" 
+                    style="width: 100%; padding: 1rem; font-size: 1.1rem; font-weight: 600; border-radius: 6px; cursor: pointer;">
+                    Accedi
+                </button>
+            </form>
+
+            <!-- Link registrazione -->
+            <div style="margin-top: 2rem; text-align: center; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                <p style="color: #666; margin-bottom: 0.5rem;">Non hai un account?</p>
+                <a th:href="@{/register}" class="btn btn-secondary" style="display: inline-block; padding: 0.75rem 2rem; text-decoration: none; border-radius: 6px;">
+                    Registrati
+                </a>
+            </div>
+
+            <!-- Credenziali demo per professori -->
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                <h4 style="margin-top: 0; color: #17a2b8; font-size: 0.95rem;">ℹ️ Account Demo per Test</h4>
+                <p style="margin: 0.5rem 0; font-size: 0.9rem; color: #666;">
+                    <strong>Email:</strong> margherita.biffi@example.com<br>
+                    <strong>Password:</strong> password123
+                </p>
+                <p style="margin: 0.75rem 0 0 0; font-size: 0.85rem; color: #888; font-style: italic;">
+                    Usa questo account per testare l'applicazione durante la demo.
+                </p>
+            </div>
+        </div>
+
+        <footer style="margin-top: 3rem;">
+            <p>App Padel - Progetto Ingegneria del Software 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -47,16 +47,18 @@ The UI is designed for rapid demonstration, featuring a minimalist homepage, red
 -   **H2 in-memory database** for development.
 -   **Spring Boot DevTools** for hot reloading.
 -   **Spring Actuator** for monitoring.
--   **UserContext** is used to simulate a single logged-in user (Margherita Biffi) for simplified demonstration.
+-   **Session-based Authentication**: HTTP session management with `UserSessionService` for login/register functionality. All endpoints require authentication.
+-   **Demo Credentials**: Margherita Biffi (margherita.biffi@padel.it / password123) is the default demo user.
 -   **POST-Redirect-GET pattern** is used in web controllers.
 
 **Feature Specifications:**
+-   **Authentication System**: Login/register with email and password. Session-based auth with redirect to /login for unauthenticated access.
 -   **User Management**: Registration with declared and perceived skill levels.
--   **Match Management**: Create, join, leave matches; automatic confirmation when 4 players join. Match deletion if the creator leaves.
+-   **Match Management**: Create, join, leave matches; automatic confirmation when 4 players join. Match deletion if the creator leaves. Only creator can finish matches.
 -   **Feedback System**: Players rate others post-match, updating perceived skill levels.
 -   **Dynamic Sorting**: Matches can be sorted by date, popularity, or required level using the Strategy Pattern.
 -   **Notifications**: Implemented via the Observer Pattern for match confirmations and completions.
--   **Data Seeding**: Automatic seeding of a complete dataset (users, matches, registrations) for testing.
+-   **Data Seeding**: Automatic seeding of a complete dataset (users, matches, registrations) for testing. All users created with password "password123".
 
 **System Design Choices:**
 -   **Observer Pattern**: `MatchConfirmedEvent` and `MatchFinishedEvent` are published by `ApplicationEventPublisher` and handled by `MatchEventListener` for notifications.

@@ -182,8 +182,8 @@ public class DataSeeder implements CommandLineRunner {
         // STEP 1: Creazione utenti
         // =====================================================================
         
-        // Margherita: utente principale simulato come "loggato" nell'applicazione
-        // UserContext.getCurrentUser() restituirà sempre questo utente
+        // Margherita: utente principale per demo/test dell'applicazione
+        // Credenziali di login: margherita.biffi@padel.it / password123
         User margherita = createUser("margherita", "margherita.biffi@padel.it", "Margherita", "Biffi", Level.INTERMEDIO);
         
         // Altri utenti demo con diversi livelli di abilità
