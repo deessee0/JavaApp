@@ -29,6 +29,12 @@ Il progetto include script **Linux/Mac (.sh) e Windows (.bat)** per semplificare
 - Supporta sia `docker compose` (nuovo) che `docker-compose` (vecchio)
 - Health check automatico (~40s per startup completo)
 
+**✨ Robustezza Script (Nov 2025):**
+- Tutti gli script cambiano automaticamente directory alla root del progetto
+- Funzionano indipendentemente da dove vengono eseguiti
+- Windows: `cd /d "%~dp0\.."` | Linux/Mac: `cd "$(dirname "$0")/.."`
+- Fix per errore "mvnw.cmd not found" su Windows
+
 **Guida completa:** Vedi `scripts/README.md` per troubleshooting e dettagli
 
 ### Docker Production-Ready
