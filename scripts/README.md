@@ -192,6 +192,23 @@ Aspettati: **59/59 test passati** ✅
 
 ## 📝 Note Tecniche
 
+### Esecuzione Script
+**✨ Gli script cambiano automaticamente directory alla root del progetto**, quindi funzionano indipendentemente da dove vengono eseguiti:
+
+```bash
+# Tutti questi comandi funzionano correttamente:
+./scripts/run-local.sh          # Dalla root
+cd scripts && ./run-local.sh    # Dalla directory scripts
+scripts/run-local.sh            # Con percorso relativo
+```
+
+**Implementazione:**
+- Windows (.bat): `cd /d "%~dp0\.."`
+- Linux/Mac (.sh): `cd "$(dirname "$0")/.."`
+
+Questo garantisce che Maven wrapper (`mvnw` / `mvnw.cmd`) venga sempre trovato nella root del progetto.
+
+### Configurazione
 - **Port 5000:** Configurato in `application.properties`
 - **Database:** H2 in-memory (auto-popolato con dati demo)
 - **Hot Reload:** Abilitato con Spring DevTools
