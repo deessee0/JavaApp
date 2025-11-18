@@ -5,6 +5,9 @@
 
 set -e  # Exit on error
 
+# Cambia alla directory root del progetto (una directory sopra scripts/)
+cd "$(dirname "$0")/.."
+
 echo "================================================"
 echo "🚀 Avvio Padel App (metodo locale con Maven)"
 echo "================================================"
