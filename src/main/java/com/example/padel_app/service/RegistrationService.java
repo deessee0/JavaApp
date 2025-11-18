@@ -146,25 +146,30 @@ public class RegistrationService {
      * VALIDAZIONI:
      * 1. ❌ Utente già iscritto (JOINED) → eccezione
      * 2. ❌ Partita piena (4/4 giocatori) → eccezione
-     * 3. ✅ Crea Registration con status = JOINED
+     * 3. ✅ Crea Registration con status = JOINED (o riattiva se CANCELLED)
      * 4. ✅ Trigger auto-conferma se raggiunge 4 giocatori
      * 
      * FLOW COMPLETO:
-     * 1. Check duplicati
+     * 1. Check duplicati (solo JOINED)
      * 2. Check capacità massima
-     * 3. Crea e salva registration
+     * 3. **RIUSA registration CANCELLED se esistente** (fix unique constraint)
+     *    - Se esiste registration CANCELLED → riattiva (status = JOINED)
+     *    - Se non esiste → crea nuova registration
      * 4. Log operazione
      * 5. **Chiama MatchService.checkAndConfirmMatch()**
      *    → Se 4° giocatore: WAITING → CONFIRMED + evento Observer
      * 
+     * NOTA: Questo approccio risolve il problema del vincolo unique (user_id, match_id)
+     * permettendo iscrizioni multiple dopo disiscrizione senza violare il DB.
+     * 
      * @param user utente che si iscrive
      * @param match partita target
-     * @return registration creata
+     * @return registration creata o riattivata
      * @throws IllegalStateException se già iscritto o partita piena
      */
     @Transactional  // Override readOnly: serve scrittura DB
     public Registration joinMatch(User user, Match match) {
-        // Check if already registered
+        // Check if already registered with JOINED status
         if (isUserRegisteredForMatch(user, match)) {
             throw new IllegalStateException("User already registered for this match");
         }
@@ -175,16 +180,31 @@ public class RegistrationService {
             throw new IllegalStateException("Match is full - maximum 4 players allowed");
         }
         
-        // Create registration
-        Registration registration = new Registration();
-        registration.setUser(user);
-        registration.setMatch(match);
-        registration.setStatus(RegistrationStatus.JOINED);
-        registration.setRegisteredAt(LocalDateTime.now());
+        // Try to find existing CANCELLED registration to reuse
+        Optional<Registration> existingCancelledReg = registrationRepository
+            .findByUserAndMatchAndStatus(user, match, RegistrationStatus.CANCELLED);
+        
+        Registration registration;
+        if (existingCancelledReg.isPresent()) {
+            // Riusa registration esistente (fix unique constraint violation)
+            registration = existingCancelledReg.get();
+            registration.setStatus(RegistrationStatus.JOINED);
+            registration.setRegisteredAt(LocalDateTime.now());  // Aggiorna timestamp
+            log.info("User {} re-joined match {} (reactivating cancelled registration)", 
+                     user.getUsername(), match.getId());
+        } else {
+            // Crea nuova registration (prima iscrizione)
+            registration = new Registration();
+            registration.setUser(user);
+            registration.setMatch(match);
+            registration.setStatus(RegistrationStatus.JOINED);
+            registration.setRegisteredAt(LocalDateTime.now());
+            log.info("User {} joined match {} for the first time", 
+                     user.getUsername(), match.getId());
+        }
         
         Registration savedRegistration = registrationRepository.save(registration);
-        log.info("User {} joined match {} ({}/{} players)", 
-                 user.getUsername(), match.getId(), currentPlayers + 1, 4);
+        log.info("Match {} now has {}/{} players", match.getId(), currentPlayers + 1, 4);
         
         // Check if match should be auto-confirmed (4 players)
         // Delega a MatchService che pubblica evento Observer se necessario

@@ -122,15 +122,17 @@ package "com.example.padel_app.service" <<Rectangle>> {
   
   class RegistrationService {
     - registrationRepository: RegistrationRepository
-    - matchRepository: MatchRepository
-    - userRepository: UserRepository
+    - matchService: MatchService
     __
-    + registerUser(match: Match, user: User): Registration
-    + cancelRegistration(registrationId: Long): void
-    + getActiveRegistrations(match: Match): List<Registration>
-    + findByMatchAndUser(match: Match, user: User): Optional<Registration>
+    + joinMatch(user: User, match: Match): Registration
+    + leaveMatch(user: User, match: Match): void
+    + getRegistrationsByUser(user: User): List<Registration>
+    + getRegistrationsByMatch(match: Match): List<Registration>
+    + getActiveRegistrationsByMatch(match: Match): List<Registration>
+    + isUserRegisteredForMatch(user: User, match: Match): boolean
+    + getActiveRegistrationsCount(match: Match): int
     __
-    - validateRegistration(match: Match, user: User): void
+    note: "Riutilizza registrations CANCELLED per evitare unique constraint violation"
   }
   
   class FeedbackService {
@@ -154,6 +156,16 @@ package "com.example.padel_app.service" <<Rectangle>> {
     + findById(id: Long): Optional<User>
     + findAll(): List<User>
     + updateUser(User): User
+  }
+  
+  class UserSessionService {
+    __
+    + saveUserInSession(user: User, session: HttpSession): void
+    + getUserFromSession(session: HttpSession): Optional<User>
+    + clearSession(session: HttpSession): void
+    + isAuthenticated(session: HttpSession): boolean
+    __
+    note: "Gestione sessione HTTP per autenticazione"
   }
   
   class NotificationService <<Singleton>> {
@@ -251,12 +263,25 @@ package "com.example.padel_app.repository" <<Rectangle>> {
 ' ========== CONTROLLER LAYER ==========
 package "com.example.padel_app.controller" <<Rectangle>> {
   
+  class AuthController {
+    - userService: UserService
+    - userSessionService: UserSessionService
+    __
+    + loginPage(): String
+    + registerPage(): String
+    + login(email: String, password: String, session: HttpSession): String
+    + register(request: RegisterRequest, session: HttpSession): String
+    + logout(session: HttpSession): String
+    __
+    note: "Gestisce autenticazione e registrazione"
+  }
+  
   class WebController {
     - matchService: MatchService
     - userService: UserService
     - registrationService: RegistrationService
     - feedbackService: FeedbackService
-    - userContext: UserContext
+    - userSessionService: UserSessionService
     __
     + home(model: Model): String
     + myMatches(model: Model): String
@@ -299,14 +324,15 @@ MatchService ..> MatchConfirmedEvent : <<publishes>>
 MatchService ..> MatchFinishedEvent : <<publishes>>
 
 RegistrationService --> RegistrationRepository
-RegistrationService --> MatchRepository
-RegistrationService --> UserRepository
+RegistrationService --> MatchService : delegates >
 
 FeedbackService --> FeedbackRepository
 FeedbackService --> UserRepository
 FeedbackService --> MatchRepository
 
 UserService --> UserRepository
+
+UserSessionService --> UserRepository : queries >
 
 ' Strategy pattern
 DateSortingStrategy ..|> MatchSortingStrategy : <<implements>>
@@ -319,10 +345,14 @@ MatchEventListener ..> MatchFinishedEvent : <<listens>>
 MatchEventListener --> NotificationService : uses >
 
 ' Controller dependencies
+AuthController --> UserService
+AuthController --> UserSessionService : manages session >
+
 WebController --> MatchService
 WebController --> UserService
 WebController --> RegistrationService
 WebController --> FeedbackService
+WebController --> UserSessionService : verifies auth >
 
 ' Pattern annotations
 note top of MatchSortingStrategy

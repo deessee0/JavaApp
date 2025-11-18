@@ -9,25 +9,37 @@ actor "Sistema" as system
 
 rectangle "App Padel" {
   
+  ' ========== AUTENTICAZIONE ==========
+  usecase "Login" as UC0
+  usecase "Logout" as UC15
   usecase "Registra Utente" as UC1
+  
+  ' ========== GESTIONE UTENTE ==========
   usecase "Visualizza Profilo" as UC2
+  
+  ' ========== GESTIONE PARTITE ==========
   usecase "Crea Partita" as UC3
   usecase "Unisciti a Partita" as UC4
   usecase "Abbandona Partita" as UC5
   usecase "Visualizza Lista Partite" as UC6
   usecase "Filtra Partite" as UC7
   usecase "Ordina Partite" as UC8
+  
+  ' ========== FEEDBACK E COMMUNITY ==========
   usecase "Fornisci Feedback" as UC9
   usecase "Visualizza Community" as UC10
   
+  ' ========== OPERAZIONI SISTEMA ==========
   usecase "Conferma Partita\n(auto al 4° giocatore)" as UC11
   usecase "Termina Partita" as UC12
   usecase "Invia Notifiche" as UC13
   usecase "Aggiorna Livello Percepito" as UC14
 }
 
-' Relazioni Giocatore
-player --> UC1
+' ========== RELAZIONI GIOCATORE ==========
+player --> UC0 : accede
+player --> UC15 : esce
+player --> UC1 : si registra
 player --> UC2
 player --> UC3
 player --> UC4
@@ -36,20 +48,36 @@ player --> UC6
 player --> UC9
 player --> UC10
 
-' Inclusioni
+' ========== INCLUSIONI E PRECONDIZIONI ==========
 UC6 ..> UC7 : <<include>>
 UC6 ..> UC8 : <<include>>
 UC4 ..> UC11 : <<extend>>
 
-' Relazioni Sistema
+
+' ========== RELAZIONI SISTEMA ==========
 system --> UC11
 system --> UC12
 system --> UC13
 system --> UC14
 
-' Dipendenze
+' ========== DIPENDENZE BUSINESS ==========
 UC9 ..> UC14 : <<trigger>>
 UC11 ..> UC13 : <<trigger>>
+
+note right of UC0
+  **Autenticazione Session-Based**
+  Implementata con UserSessionService.
+  
+  **Flusso di accesso:**
+  1. Utente esegue Login (UC0) con email/password
+  2. Sistema crea sessione HTTP (UserSessionService)
+  3. Utente può accedere a tutte le funzionalità
+  
+  **Protezione endpoint:**
+  - Login/Logout/Registrazione: accessibili senza auth
+  - WebController verifica sessione prima di servire pagine
+  - Redirect automatico a /login se non autenticato
+end note
 
 note right of UC11
   La conferma avviene automaticamente

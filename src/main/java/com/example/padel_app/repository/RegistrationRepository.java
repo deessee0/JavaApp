@@ -117,6 +117,29 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     boolean existsByUserAndMatchAndStatus(User user, Match match, RegistrationStatus status);
     
     /**
+     * Trova iscrizione specifica per coppia (user, match) con status specifico
+     * 
+     * DERIVED QUERY METHOD - composite con 3 condizioni:
+     * SQL: SELECT * FROM registrations WHERE user_id = ? AND match_id = ? AND status = ?
+     * 
+     * BUSINESS LOGIC:
+     * Usato per trovare registration CANCELLED da riattivare durante ri-iscrizione.
+     * Questo previene violazione del vincolo unique (user_id, match_id) permettendo
+     * iscrizioni multiple dopo disiscrizione.
+     * 
+     * Optional perché può non esistere (prima iscrizione o mai cancellata)
+     * 
+     * Uso in RegistrationService.joinMatch():
+     *   Optional<Registration> cancelled = 
+     *       registrationRepository.findByUserAndMatchAndStatus(user, match, CANCELLED);
+     *   if (cancelled.isPresent()) {
+     *       // Riattiva esistente invece di crearne nuova
+     *       cancelled.get().setStatus(JOINED);
+     *   }
+     */
+    Optional<Registration> findByUserAndMatchAndStatus(User user, Match match, RegistrationStatus status);
+    
+    /**
      * Trova iscrizioni ATTIVE (JOINED) per una partita (con JOIN FETCH)
      * 
      * @Query CUSTOM con filtro status:
