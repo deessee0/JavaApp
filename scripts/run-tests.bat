@@ -2,6 +2,9 @@
 REM Script per eseguire test suite completa e generare report coverage (Windows)
 REM Uso: scripts\run-tests.bat
 
+REM Cambia alla directory root del progetto (una directory sopra scripts/)
+cd /d "%~dp0\.."
+
 echo ================================================
 echo 🧪 Esecuzione Test Suite - Padel App
 echo ================================================
@@ -12,7 +15,7 @@ REM ========== ESECUZIONE TEST ==========
 echo 📝 Esecuzione di tutti i test (59 test totali)...
 echo.
 
-call mvnw.cmd test
+call "%~dp0\..\mvnw.cmd" test
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
@@ -33,7 +36,7 @@ REM ========== GENERAZIONE REPORT COVERAGE ==========
 echo 📊 Generazione report JaCoCo Coverage...
 echo.
 
-call mvnw.cmd jacoco:report
+call "%~dp0\..\mvnw.cmd" jacoco:report
 
 echo.
 echo ================================================
