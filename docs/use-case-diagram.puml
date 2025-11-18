@@ -70,13 +70,18 @@ note right of UC0
   
   **Flusso di accesso:**
   1. Utente esegue Login (UC0) con email/password
-  2. Sistema crea sessione HTTP (UserSessionService)
-  3. Utente può accedere a tutte le funzionalità
+  2. Sistema crea sessione HTTP persistente
+  3. Utente può accedere a tutti gli use cases protetti
   
-  **Protezione endpoint:**
-  - Login/Logout/Registrazione: accessibili senza auth
-  - WebController verifica sessione prima di servire pagine
-  - Redirect automatico a /login se non autenticato
+  **Endpoint WebController:**
+  - Login/Logout/Registrazione (AuthController): pubblici
+  - Tutti gli altri endpoint (WebController): protetti
+  - Ogni metodo verifica getCurrentUser(session)
+  - Redirect automatico a /login se sessione assente
+  
+  **Design Pattern:**
+  - Session persiste tra richieste (no login per-request)
+  - UserSessionService gestisce stato autenticazione
 end note
 
 note right of UC11

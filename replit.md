@@ -74,7 +74,7 @@ The UI is designed for rapid demonstration, featuring a minimalist homepage, red
 **Feature Specifications:**
 -   **Authentication System**: Login/register with email and password. Session-based auth with redirect to /login for unauthenticated access.
 -   **User Management**: Registration with declared and perceived skill levels.
--   **Match Management**: Create, join, leave matches; automatic confirmation when 4 players join. Match deletion if the creator leaves. Only creator can finish matches.
+-   **Match Management**: Create, join, leave matches; automatic confirmation when 4 players join. Match deletion if the creator leaves. Only creator can finish matches. **Bug fix (Nov 2025)**: Riutilizzo registrations CANCELLED per evitare unique constraint violation su ri-iscrizione.
 -   **Feedback System**: Players rate others post-match, updating perceived skill levels.
 -   **Dynamic Sorting**: Matches can be sorted by date, popularity, or required level using the Strategy Pattern.
 -   **Notifications**: Implemented via the Observer Pattern for match confirmations and completions.
@@ -112,6 +112,17 @@ Diagramma delle classi completo che mostra:
   - **Singleton Pattern**: NotificationService
 - Relazioni JPA (@OneToMany, @ManyToOne)
 - Package organization completa
+
+### Use Case Diagram
+File: `docs/use-case-diagram.puml`
+
+Diagramma dei casi d'uso completo:
+- Attori: Giocatore e Sistema
+- Use cases autenticazione: Login (UC0), Logout (UC15), Registrazione Utente (UC1)
+- Use cases business: Crea/Iscriviti/Lascia Match, Feedback, Analytics
+- **Aggiornamento Nov 2025**: Rimossi `<<requires auth>>` dependencies errati che implicavano login per-request
+- Nota esplicativa: descrive session-based auth con redirect automatico a /login
+- WebController verifica getCurrentUser(session) su tutti gli endpoint protetti
 
 ### Sequence Diagrams
 
