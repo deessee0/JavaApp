@@ -2,6 +2,9 @@
 REM Script di avvio rapido per Padel App (Windows)
 REM Uso: scripts\run-local.bat
 
+REM Cambia alla directory root del progetto (una directory sopra scripts/)
+cd /d "%~dp0\.."
+
 echo ================================================
 echo 🚀 Avvio Padel App (metodo locale con Maven)
 echo ================================================
@@ -42,10 +45,10 @@ if %JAVA_MAJOR% LSS 17 (
 echo ✅ Java version: %JAVA_MAJOR%
 echo.
 
-REM Check Maven wrapper
+REM Check Maven wrapper (ora nella root del progetto)
 if not exist "mvnw.cmd" (
     echo ❌ ERRORE: Maven wrapper (mvnw.cmd) non trovato
-    echo    Assicurati di essere nella root del progetto
+    echo    Directory corrente: %CD%
     echo.
     pause
     exit /b 1
@@ -72,4 +75,4 @@ echo ================================================
 echo.
 
 REM Avvia applicazione con Maven wrapper
-mvnw.cmd spring-boot:run
+call mvnw.cmd spring-boot:run
