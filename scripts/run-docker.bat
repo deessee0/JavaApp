@@ -2,6 +2,9 @@
 REM Script di avvio rapido con Docker (Windows)
 REM Uso: scripts\run-docker.bat
 
+REM Cambia alla directory root del progetto (una directory sopra scripts/)
+cd /d "%~dp0\.."
+
 echo ================================================
 echo 🐳 Avvio Padel App con Docker
 echo ================================================
