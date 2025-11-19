@@ -124,11 +124,105 @@ Il progetto dimostra l'applicazione pratica dei principi di Ingegneria del Softw
 **File coinvolti**:
 - `src/main/java/com/example/padel_app/service/NotificationService.java`
 
+## 🔒 Sicurezza e Autenticazione
+
+### Sistema di Autenticazione
+
+L'applicazione implementa un sistema di **autenticazione session-based** con gestione sicura delle password:
+
+#### BCrypt Password Hashing ✅
+
+**Scopo**: Proteggere le password degli utenti con hashing sicuro
+
+**Implementazione**:
+- `SecurityConfig`: Configura il bean BCryptPasswordEncoder
+- `AuthController`: Utilizza BCrypt per hash e verifica password
+- **Auto-upgrade**: Password legacy in chiaro vengono automaticamente convertite a BCrypt al primo login
+
+**Caratteristiche**:
+- **Algoritmo BCrypt**: Hashing sicuro con salt automatico
+- **Protezione brute-force**: Iterazioni configurabili (default 10 rounds)
+- **Retro-compatibilità**: Supporto password legacy con conversione automatica
+- **Varianti supportate**: $2a$, $2b$, $2y$ (tutti i formati BCrypt standard)
+
+**File coinvolti**:
+- `src/main/java/com/example/padel_app/config/SecurityConfig.java`
+- `src/main/java/com/example/padel_app/controller/AuthController.java`
+
+#### Flusso di Registrazione
+
+```java
+1. User inserisce email/password nel form
+2. AuthController.register() riceve credenziali in chiaro
+3. Password viene hashata con BCrypt: 
+   String hashedPassword = passwordEncoder.encode(plainPassword)
+4. Hash salvato nel database (NON la password originale)
+5. User creato con password protetta
+```
+
+#### Flusso di Login
+
+```java
+1. User inserisce email/password
+2. AuthController.login() recupera user dal database
+3. Verifica password:
+   - Se hash BCrypt → passwordEncoder.matches(plain, hash)
+   - Se plaintext (legacy) → conversione automatica a BCrypt
+4. Se match → salva user in sessione HTTP
+5. Redirect a homepage autenticata
+```
+
+#### Auto-Upgrade Password Legacy
+
+Per garantire compatibilità con dati esistenti, il sistema supporta:
+
+```java
+// Login check con auto-upgrade
+if (storedPassword.startsWith("$2a$") || 
+    storedPassword.startsWith("$2b$") || 
+    storedPassword.startsWith("$2y$")) {
+    // Password già hashata → verifica BCrypt
+    passwordMatches = passwordEncoder.matches(password, storedPassword);
+} else {
+    // Password legacy in chiaro → verifica e upgrade
+    passwordMatches = password.equals(storedPassword);
+    if (passwordMatches) {
+        // AUTO-UPGRADE: converte a BCrypt
+        user.setPassword(passwordEncoder.encode(password));
+        userRepository.save(user);
+    }
+}
+```
+
+### Gestione Sessioni HTTP
+
+**Scopo**: Mantenere stato autenticazione tra richieste HTTP
+
+**Implementazione**:
+- `UserSessionService`: Gestisce salvataggio/recupero user da sessione
+- **Session invalidation**: Logout completo con `session.invalidate()`
+- **Security checks**: Ogni endpoint protetto verifica presenza user in sessione
+
+**Pattern**: 
+- POST-Redirect-GET per prevenire double-submit
+- Flash messages per feedback utente
+
+### Sicurezza Aggiuntiva (Best Practices Produzione)
+
+⚠️ **Raccomandazioni per deployment enterprise**:
+- Usare **HTTPS** obbligatorio per traffico cifrato
+- Implementare **CSRF protection** con Spring Security
+- Aggiungere **rate limiting** per prevenire brute force
+- Validare input con **Bean Validation** (@Email, @Size, etc.)
+- Implementare **2FA** (Two-Factor Authentication)
+- Configurare **password policy** (lunghezza min, complessità)
+
 ## 📦 Struttura del Progetto
 
 ```
 src/main/java/com/example/padel_app/
 ├── config/                    # Configurazioni e inizializzazione
+│   ├── SecurityConfig.java   # Configurazione BCrypt per password hashing
 │   └── DataSeeder.java       # Popolamento DB con dati demo
 ├── controller/                # Controllers MVC
 │   └── WebController.java    # Controller principale per tutte le pagine web
