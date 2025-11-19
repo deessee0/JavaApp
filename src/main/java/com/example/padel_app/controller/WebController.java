@@ -211,9 +211,9 @@ public class WebController {
             return "redirect:/login";
         }
         
-        // STEP 1: Ottieni TUTTE le partite dell'utente (active + finished)
-        // Usa getRegistrationsByUser() invece di getActiveRegistrationsByUser() per includere anche FINISHED
-        List<Match> allMyMatches = registrationService.getRegistrationsByUser(currentUser).stream()
+        // STEP 1: Ottieni SOLO le partite con registration JOINED (esclude CANCELLED)
+        // Fix Bug: usare getActiveRegistrationsByUser() per evitare duplicati UI con registrations CANCELLED
+        List<Match> allMyMatches = registrationService.getActiveRegistrationsByUser(currentUser).stream()
             .map(com.example.padel_app.model.Registration::getMatch)
             .collect(java.util.stream.Collectors.toList());
         
