@@ -61,6 +61,11 @@ public class MatchService {
     private final com.example.padel_app.repository.RegistrationRepository registrationRepository;
     
     /**
+     * Repository per gestire User (necessario per incrementare matchesPlayed)
+     */
+    private final com.example.padel_app.repository.UserRepository userRepository;
+    
+    /**
      * Publisher per Observer Pattern
      * Pubblica eventi (MatchConfirmedEvent, MatchFinishedEvent) che vengono
      * ascoltati da MatchEventListener
@@ -312,6 +317,27 @@ public class MatchService {
             if (match.getStatus() == MatchStatus.CONFIRMED) {
                 match.setStatus(MatchStatus.FINISHED);
                 Match savedMatch = matchRepository.save(match);
+                
+                // BUG FIX: Incrementa matchesPlayed di tutti i partecipanti
+                // 1. Ottieni tutti i partecipanti con registration JOINED
+                List<com.example.padel_app.model.Registration> activeRegistrations = 
+                    registrationRepository.findByMatchAndStatus(match, com.example.padel_app.model.enums.RegistrationStatus.JOINED);
+                
+                // 2. Incrementa counter per tutti i giocatori (incluso creator se è anche partecipante)
+                List<com.example.padel_app.model.User> playersToUpdate = activeRegistrations.stream()
+                    .map(com.example.padel_app.model.Registration::getUser)
+                    .distinct()  // Evita duplicati se stesso user ha registrations multiple (non dovrebbe succedere)
+                    .peek(user -> {
+                        user.setMatchesPlayed(user.getMatchesPlayed() + 1);
+                        log.info("📊 Incrementato matchesPlayed per user {} (ID: {}): {} partite giocate", 
+                            user.getEmail(), user.getId(), user.getMatchesPlayed());
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+                
+                // 3. Salva tutti gli utenti aggiornati in batch
+                userRepository.saveAll(playersToUpdate);
+                log.info("✅ Aggiornato counter matchesPlayed per {} giocatori della partita ID: {}", 
+                    playersToUpdate.size(), matchId);
                 
                 // Publish Observer event
                 log.info("🏁 Manual finish - Publishing MatchFinishedEvent for match ID: {}", savedMatch.getId());
