@@ -266,8 +266,9 @@ package "com.example.padel_app.repository" <<Rectangle>> {
 package "com.example.padel_app.controller" <<Rectangle>> {
   
   class AuthController {
-    - userService: UserService
+    - userRepository: UserRepository
     - userSessionService: UserSessionService
+    - passwordEncoder: PasswordEncoder
     __
     + loginPage(): String
     + registerPage(): String
@@ -275,7 +276,7 @@ package "com.example.padel_app.controller" <<Rectangle>> {
     + register(request: RegisterRequest, session: HttpSession): String
     + logout(session: HttpSession): String
     __
-    note: "Gestisce autenticazione e registrazione"
+    note: "Gestisce autenticazione con BCrypt hashing"
   }
   
   class WebController {
@@ -296,6 +297,25 @@ package "com.example.padel_app.controller" <<Rectangle>> {
     + finishMatch(id: Long): String
     + feedbackForm(id: Long, model: Model): String
     + submitFeedback(matchId, targetUserId, suggestedLevel, comment): String
+  }
+}
+
+' ========== CONFIGURATION LAYER ==========
+package "com.example.padel_app.config" <<Rectangle>> {
+  
+  class SecurityConfig {
+    __
+    + passwordEncoder(): BCryptPasswordEncoder
+    __
+    note: "Configura BCrypt per password hashing sicuro"
+  }
+  
+  class "<<Spring Bean>>\nBCryptPasswordEncoder" as BCryptEncoder {
+    __
+    + encode(password: String): String
+    + matches(rawPassword: String, encodedPassword: String): boolean
+    __
+    note: "Algoritmo BCrypt per hashing password\n- Salt automatico\n- Iterazioni configurabili\n- Sicuro contro brute force"
   }
 }
 
@@ -349,14 +369,18 @@ MatchEventListener ..> MatchFinishedEvent : <<listens>>
 MatchEventListener --> NotificationService : uses >
 
 ' Controller dependencies
-AuthController --> UserService
+AuthController --> UserRepository : queries >
 AuthController --> UserSessionService : manages session >
+AuthController --> BCryptEncoder : hashes passwords >
 
 WebController --> MatchService
 WebController --> UserService
 WebController --> RegistrationService
 WebController --> FeedbackService
 WebController --> UserSessionService : verifies auth >
+
+' Security configuration
+SecurityConfig ..> BCryptEncoder : <<creates bean>>
 
 ' Pattern annotations
 note top of MatchSortingStrategy
