@@ -673,11 +673,12 @@ public class WebController {
             .collect(java.util.stream.Collectors.toSet());
         
         // Filtra i giocatori disponibili per il feedback
-        // Include TUTTI i partecipanti (anche CANCELLED) perché la partita è già terminata
-        List<User> availablePlayers = registrationService.getAllRegistrationsByMatch(match).stream()
+        // BUG FIX: Include SOLO i partecipanti JOINED (esclude CANCELLED) per feedback
+        // Mostra TUTTI gli altri giocatori che hanno effettivamente giocato, non solo il creator
+        List<User> availablePlayers = registrationService.getActiveRegistrationsByMatch(match).stream()
             .map(com.example.padel_app.model.Registration::getUser)
-            .filter(u -> !u.getId().equals(currentUser.getId()))
-            .filter(u -> !alreadyRatedUserIds.contains(u.getId()))
+            .filter(u -> !u.getId().equals(currentUser.getId()))  // Esclude se stesso
+            .filter(u -> !alreadyRatedUserIds.contains(u.getId()))  // Esclude già valutati
             .collect(java.util.stream.Collectors.toList());
         
         model.addAttribute("match", match);

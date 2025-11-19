@@ -318,25 +318,43 @@ public class MatchService {
                 match.setStatus(MatchStatus.FINISHED);
                 Match savedMatch = matchRepository.save(match);
                 
-                // BUG FIX: Incrementa matchesPlayed di tutti i partecipanti
-                // 1. Ottieni tutti i partecipanti con registration JOINED
+                // BUG FIX: Incrementa matchesPlayed di TUTTI i partecipanti (creator + giocatori)
+                // 1. Ottieni tutti i giocatori con registration JOINED
                 List<com.example.padel_app.model.Registration> activeRegistrations = 
                     registrationRepository.findByMatchAndStatus(match, com.example.padel_app.model.enums.RegistrationStatus.JOINED);
                 
-                // 2. Incrementa counter per tutti i giocatori (incluso creator se è anche partecipante)
-                List<com.example.padel_app.model.User> playersToUpdate = activeRegistrations.stream()
-                    .map(com.example.padel_app.model.Registration::getUser)
-                    .distinct()  // Evita duplicati se stesso user ha registrations multiple (non dovrebbe succedere)
-                    .peek(user -> {
-                        user.setMatchesPlayed(user.getMatchesPlayed() + 1);
-                        log.info("📊 Incrementato matchesPlayed per user {} (ID: {}): {} partite giocate", 
-                            user.getEmail(), user.getId(), user.getMatchesPlayed());
-                    })
-                    .collect(java.util.stream.Collectors.toList());
+                // 2. Raccogli tutti gli utenti partecipanti
+                List<com.example.padel_app.model.User> playersToUpdate = new java.util.ArrayList<>();
+                
+                // Aggiungi il CREATOR (sempre partecipante della partita che ha creato)
+                com.example.padel_app.model.User creator = match.getCreator();
+                if (creator != null) {
+                    creator.setMatchesPlayed(creator.getMatchesPlayed() + 1);
+                    playersToUpdate.add(creator);
+                    log.info("📊 Incrementato matchesPlayed per CREATOR {} (ID: {}): {} partite giocate", 
+                        creator.getEmail(), creator.getId(), creator.getMatchesPlayed());
+                }
+                
+                // Aggiungi tutti gli altri giocatori con registration JOINED (se non già inclusi)
+                java.util.Set<Long> userIdsAlreadyAdded = new java.util.HashSet<>();
+                if (creator != null) {
+                    userIdsAlreadyAdded.add(creator.getId());
+                }
+                
+                for (com.example.padel_app.model.Registration reg : activeRegistrations) {
+                    com.example.padel_app.model.User player = reg.getUser();
+                    if (!userIdsAlreadyAdded.contains(player.getId())) {
+                        player.setMatchesPlayed(player.getMatchesPlayed() + 1);
+                        playersToUpdate.add(player);
+                        userIdsAlreadyAdded.add(player.getId());
+                        log.info("📊 Incrementato matchesPlayed per player {} (ID: {}): {} partite giocate", 
+                            player.getEmail(), player.getId(), player.getMatchesPlayed());
+                    }
+                }
                 
                 // 3. Salva tutti gli utenti aggiornati in batch
                 userRepository.saveAll(playersToUpdate);
-                log.info("✅ Aggiornato counter matchesPlayed per {} giocatori della partita ID: {}", 
+                log.info("✅ Aggiornato counter matchesPlayed per {} partecipanti (creator + giocatori) della partita ID: {}", 
                     playersToUpdate.size(), matchId);
                 
                 // Publish Observer event
