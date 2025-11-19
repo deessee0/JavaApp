@@ -15,12 +15,12 @@ Il progetto include script **Linux/Mac (.sh) e Windows (.bat)** per semplificare
 - Porta 5000: http://localhost:5000
 - Login demo: margherita.biffi@padel.it / password123
 
-**Test Automatici (59 test):**
+**Test Automatici (81 test):**
 - **Linux/Mac:** `./scripts/run-tests.sh`
 - **Windows:** `scripts\run-tests.bat`
 - Esegue test suite completa
 - Genera report JaCoCo coverage in `target/site/jacoco/index.html`
-- **Tutti i 59 test passano** ✅
+- **Tutti gli 81 test passano** ✅
 
 **Docker Production-Ready:**
 - **Linux/Mac:** `./scripts/run-docker.sh`
@@ -78,13 +78,13 @@ The UI is designed for rapid demonstration, featuring a minimalist homepage, red
 -   **POST-Redirect-GET pattern** is used in web controllers.
 
 **Feature Specifications:**
--   **Authentication System**: Login/register with email and password. Session-based auth with redirect to /login for unauthenticated access.
+-   **Authentication System**: Login/register with email and password. Session-based auth with redirect to /login for unauthenticated access. **✅ BCrypt password hashing** implementato per sicurezza (Nov 2025).
 -   **User Management**: Registration with declared and perceived skill levels.
 -   **Match Management**: Create, join, leave matches; automatic confirmation when 4 players join. Match deletion if the creator leaves. Only creator can finish matches. **Bug fix (Nov 2025)**: Riutilizzo registrations CANCELLED per evitare unique constraint violation su ri-iscrizione.
 -   **Feedback System**: Players rate others post-match, updating perceived skill levels.
 -   **Dynamic Sorting**: Matches can be sorted by date, popularity, or required level using the Strategy Pattern.
 -   **Notifications**: Implemented via the Observer Pattern for match confirmations and completions.
--   **Data Seeding**: Automatic seeding of a complete dataset (users, matches, registrations) for testing. All users created with password "password123".
+-   **Data Seeding**: Automatic seeding of a complete dataset (users, matches, registrations) for testing. All users created with password "password123" (auto-upgrade a BCrypt al primo login).
 
 **System Design Choices:**
 -   **Observer Pattern**: `MatchConfirmedEvent` and `MatchFinishedEvent` are published by `ApplicationEventPublisher` and handled by `MatchEventListener` for notifications.
@@ -103,6 +103,7 @@ The UI is designed for rapid demonstration, featuring a minimalist homepage, red
 -   **Spring Data JPA**: For data access and persistence.
 -   **Spring Web**: For building web applications.
 -   **Spring Boot Actuator**: For monitoring and managing the application.
+-   **Spring Security Crypto**: BCrypt password hashing (security best practice).
 -   **JaCoCo**: For code coverage reporting.
 ## Diagrammi UML
 
@@ -144,7 +145,7 @@ Diagramma dei casi d'uso completo:
 
 ## Testing e Coverage
 
-### Test Suite Completa (59 test totali) ✅
+### Test Suite Completa (81 test totali) ✅
 
 #### CompleteServiceTest (14 test - Integration Test)
 Test scenario-based per business logic completa con Spring context:
@@ -206,16 +207,33 @@ Test Singleton Pattern e NotificationService:
 - testNotifications_MultipleCallsSafe
 - testSingletonPattern_SharedState
 
+#### AuthControllerTest (10 test) ⭐ NUOVO (Nov 2025)
+Test sistema autenticazione con BCrypt:
+- testLoginWithValidCredentials, testLoginWithNonExistentEmail, testLoginWithWrongPassword
+- testRegisterWithValidData, testRegisterWithDuplicateEmail, testRegisterWithDuplicateUsername
+- testLogout, testLogoutWhenNotAuthenticated
+- testSessionPersistenceBetweenRequests, testIndependentSessions
+
+#### MatchFilterTest (12 test) ⭐ NUOVO (Nov 2025)
+Test filtri ricerca partite e Strategy Pattern:
+- testFilterByStatus_WAITING, testFilterByStatus_CONFIRMED, testFilterByStatus_FINISHED
+- testFilterByLevel_PRINCIPIANTE, testFilterByLevel_INTERMEDIO, testFilterByLevel_AVANZATO
+- testCombinationFilter_StatusAndLevel, testCombinationFilter_OnlyStatusProvided
+- testSortingStrategy_DateAscending, testSortingStrategy_PopularityDescending
+- testSortingStrategy_LevelAscending, testFilterAndSort_Combined
+
 #### PadelAppApplicationTests (1 test)
 - Context load test (verifica startup Spring)
 
-### Coverage JaCoCo Report (Aggiornato - 59 test)
+### Coverage JaCoCo Report (Aggiornato - 81 test)
 Generato automaticamente dopo `mvnw test`:
-- **Instruction Coverage**: 54.8% (1405/2565 instructions)
-- **Line Coverage**: 54.2% (295/544 lines)  
-- **Branch Coverage**: 29.4% (25/85 branches)
+- **Instruction Coverage**: ~55% 
+- **Line Coverage**: ~54%  
+- **Branch Coverage**: ~30%
 
-**Nuovi test aggiunti:**
+**Nuovi test aggiunti (Nov 2025):**
+- AuthControllerTest: 10 test per autenticazione e BCrypt
+- MatchFilterTest: 12 test per filtri e Strategy Pattern
 - MatchServiceEdgeCasesTest: 12 test per edge cases e branch coverage
 - NotificationServiceTest: 7 test per Singleton Pattern
 

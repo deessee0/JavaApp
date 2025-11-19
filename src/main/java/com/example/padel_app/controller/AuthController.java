@@ -54,18 +54,21 @@ import java.util.Optional;
  *       success/error tra redirect</li>
  * </ul>
  * 
- * <h2>⚠️ IMPORTANTE - Sicurezza in Produzione:</h2>
- * In un'applicazione reale dovresti:
+ * <h2>✅ Sicurezza Implementata:</h2>
+ * <ul>
+ *   <li><strong>BCrypt password hashing</strong> ✅ IMPLEMENTATO - Le password sono hashate con BCrypt</li>
+ *   <li><strong>Auto-upgrade legacy passwords</strong> - Password in chiaro vengono hashate al primo login</li>
+ * </ul>
+ * 
+ * <h2>⚠️ Sicurezza Aggiuntiva per Produzione:</h2>
+ * Per una produzione enterprise dovresti aggiungere:
  * <ol>
- *   <li>Usare <strong>BCrypt</strong> per hashare le password</li>
- *   <li>Implementare <strong>Spring Security</strong></li>
- *   <li>Aggiungere <strong>CSRF protection</strong></li>
+ *   <li>Implementare <strong>Spring Security</strong> (CSRF, XSS protection)</li>
  *   <li>Usare <strong>HTTPS</strong> per comunicazione sicura</li>
  *   <li>Implementare <strong>rate limiting</strong> contro brute force</li>
  *   <li>Validare input con <strong>Bean Validation</strong></li>
+ *   <li>Aggiungere <strong>2FA</strong> (Two-Factor Authentication)</li>
  * </ol>
- * 
- * Per questo progetto universitario usiamo un approccio semplificato a scopo didattico.
  * 
  * @see UserSessionService Servizio che gestisce la sessione HTTP
  * @see User Entità utente nel database
@@ -77,6 +80,7 @@ public class AuthController {
     
     private final UserRepository userRepository;
     private final UserSessionService userSessionService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     
     /**
      * Mostra la pagina di login.
@@ -175,9 +179,9 @@ public class AuthController {
      * &lt;/form&gt;
      * </pre>
      * 
-     * <h3>⚠️ Sicurezza:</h3>
-     * In produzione NON fare <code>password.equals(user.getPassword())</code>!
-     * Usa: <code>passwordEncoder.matches(password, user.getHashedPassword())</code>
+     * <h3>✅ Sicurezza BCrypt:</h3>
+     * Questo metodo usa <code>passwordEncoder.matches()</code> per verificare password hashate.
+     * Supporta anche password legacy in chiaro per retro-compatibilità (auto-upgrade).
      * 
      * @param email Email inserita dall'utente
      * @param password Password inserita dall'utente (in chiaro)
@@ -208,9 +212,29 @@ public class AuthController {
         
         User user = userOpt.get();
         
-        // STEP 2: Verifica password
-        // ⚠️ In produzione usare: passwordEncoder.matches(password, user.getPassword())
-        if (!password.equals(user.getPassword())) {
+        // STEP 2: Verifica password (supporta sia BCrypt che password in chiaro)
+        // RETRO-COMPATIBILITÀ: dati seedati potrebbero avere password in chiaro
+        boolean passwordMatches;
+        String storedPassword = user.getPassword();
+        
+        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+            // Password è hashata con BCrypt (formato: $2a$, $2b$, $2y$ sono varianti BCrypt)
+            log.debug("Verifica password BCrypt per user {}", user.getUsername());
+            passwordMatches = passwordEncoder.matches(password, storedPassword);
+        } else {
+            // Password in chiaro (legacy/seeding) - confronto diretto
+            log.warn("ATTENZIONE: User {} ha password in chiaro (non sicuro!)", user.getUsername());
+            passwordMatches = password.equals(storedPassword);
+            
+            // SECURITY IMPROVEMENT: Aggiorna password a BCrypt al prossimo login
+            if (passwordMatches) {
+                log.info("Aggiornamento automatico password a BCrypt per user {}", user.getUsername());
+                user.setPassword(passwordEncoder.encode(password));
+                userRepository.save(user);
+            }
+        }
+        
+        if (!passwordMatches) {
             // Password errata
             log.warn("Login fallito: password errata per user {}", user.getUsername());
             return "redirect:/login?error";
@@ -284,12 +308,14 @@ public class AuthController {
      *   <li><strong>matchesPlayed</strong>: 0 (incrementato quando partecipa a partite)</li>
      * </ul>
      * 
-     * <h3>⚠️ Sicurezza:</h3>
-     * In produzione:
+     * <h3>✅ Sicurezza BCrypt:</h3>
+     * La password viene automaticamente hashata con BCrypt prima del salvataggio.
+     * 
+     * <h3>Miglioramenti futuri:</h3>
      * <ul>
-     *   <li>Hashare password con BCrypt</li>
-     *   <li>Validare formato email</li>
+     *   <li>Validare formato email con regex</li>
      *   <li>Validare lunghezza password (min 8 caratteri)</li>
+     *   <li>Validare complessità password (maiuscole, numeri, simboli)</li>
      *   <li>Sanitize input contro XSS</li>
      * </ul>
      * 
@@ -337,7 +363,12 @@ public class AuthController {
         User newUser = new User();
         newUser.setUsername(username);
         newUser.setEmail(normalizedEmail);  // Salva email normalizzata
-        newUser.setPassword(password);  // ⚠️ In produzione: passwordEncoder.encode(password)
+        
+        // ✅ SECURITY: Hash password con BCrypt prima di salvare
+        String hashedPassword = passwordEncoder.encode(password);
+        newUser.setPassword(hashedPassword);
+        log.debug("Password hashata con BCrypt per nuovo user {}", username);
+        
         newUser.setFirstName(firstName);
         newUser.setLastName(lastName);
         newUser.setDeclaredLevel(declaredLevel);

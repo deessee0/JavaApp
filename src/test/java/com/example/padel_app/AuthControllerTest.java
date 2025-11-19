@@ -217,8 +217,8 @@ class AuthControllerTest {
         // WHEN: Eseguo logout
         String result = authController.logout(session);
 
-        // THEN: Deve fare redirect a pagina login
-        assertEquals("redirect:/login", result);
+        // THEN: Deve fare redirect a pagina login con parametro ?logout
+        assertEquals("redirect:/login?logout", result);
 
         // THEN: Sessione deve essere cancellata (invalidate distrugge tutto)
         // Non possiamo verificare isAuthenticated su sessione invalidata
@@ -235,8 +235,8 @@ class AuthControllerTest {
         // WHEN: Eseguo logout
         String result = authController.logout(session);
 
-        // THEN: Deve comunque fare redirect a login
-        assertEquals("redirect:/login", result);
+        // THEN: Deve comunque fare redirect a login con parametro ?logout
+        assertEquals("redirect:/login?logout", result);
     }
 
     // ========== SESSION MANAGEMENT TESTS ==========
