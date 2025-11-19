@@ -102,6 +102,8 @@ package "com.example.padel_app.service" <<Rectangle>> {
   
   class MatchService {
     - matchRepository: MatchRepository
+    - userRepository: UserRepository
+    - registrationRepository: RegistrationRepository
     - registrationService: RegistrationService
     - eventPublisher: ApplicationEventPublisher
     - strategies: Map<String, MatchSortingStrategy>
@@ -318,6 +320,8 @@ Feedback "*" -- "1" Match
 
 ' Service dependencies
 MatchService --> MatchRepository
+MatchService --> UserRepository : increments matchesPlayed >
+MatchService --> RegistrationRepository : queries >
 MatchService --> RegistrationService
 MatchService "1" o-- "*" MatchSortingStrategy : uses strategies >
 MatchService ..> MatchConfirmedEvent : <<publishes>>
