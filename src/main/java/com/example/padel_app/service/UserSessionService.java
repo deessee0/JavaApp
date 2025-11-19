@@ -43,16 +43,20 @@ import java.util.Optional;
  * Normalmente si usa Spring Security per gestire autenticazione, ma per un progetto
  * universitario questo approccio con HTTP Session manuale è più semplice e didattico.
  * 
- * <h2>Sicurezza:</h2>
- * ⚠️ IMPORTANTE: In produzione dovresti:
+ * <h2>✅ Sicurezza Implementata:</h2>
  * <ul>
- *   <li>Hashare le password (BCrypt)</li>
- *   <li>Usare HTTPS</li>
- *   <li>Implementare CSRF protection</li>
- *   <li>Usare Spring Security</li>
+ *   <li><strong>✅ Password hashate con BCrypt</strong> - Implementato tramite {@link com.example.padel_app.config.SecurityConfig}</li>
+ *   <li><strong>✅ Auto-upgrade legacy passwords</strong> - Password in chiaro convertite automaticamente a BCrypt al login</li>
+ *   <li><strong>✅ Session management sicuro</strong> - Session invalidation completa al logout</li>
  * </ul>
  * 
- * Per questo progetto universitario usiamo password in chiaro per semplicità.
+ * <h2>⚠️ Sicurezza Aggiuntiva per Produzione Enterprise:</h2>
+ * <ul>
+ *   <li>Usare <strong>HTTPS</strong> obbligatorio</li>
+ *   <li>Implementare <strong>CSRF protection</strong> con Spring Security</li>
+ *   <li>Aggiungere <strong>rate limiting</strong> per prevenire brute force</li>
+ *   <li>Usare <strong>Spring Security</strong> framework completo</li>
+ * </ul>
  * 
  * @see HttpSession Oggetto Spring per gestire sessioni HTTP
  * @see AuthController Controller che usa questo servizio per login/logout

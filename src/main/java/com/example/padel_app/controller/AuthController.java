@@ -20,11 +20,12 @@ import java.util.Optional;
  * CONTROLLER PER AUTENTICAZIONE UTENTI (Login, Register, Logout).
  * 
  * <h2>Panoramica Sistema Autenticazione</h2>
- * Questo controller implementa un sistema di autenticazione SEMPLIFICATO per scopi didattici:
+ * Questo controller implementa un sistema di autenticazione per scopi didattici:
  * <ul>
- *   <li>Password salvate in <strong>chiaro</strong> (NON fare in produzione!)</li>
- *   <li>No Spring Security (per semplicità)</li>
- *   <li>Usa HTTP Session manuale tramite {@link UserSessionService}</li>
+ *   <li><strong>✅ Password hashate con BCrypt</strong> (sicurezza implementata!)</li>
+ *   <li><strong>Auto-upgrade password legacy</strong>: password in chiaro vengono hashate automaticamente al primo login</li>
+ *   <li>Usa HTTP Session manuale tramite {@link UserSessionService} (session-based auth)</li>
+ *   <li>No Spring Security framework (per semplicità didattica, ma BCrypt sì!)</li>
  * </ul>
  * 
  * <h2>Flusso di Autenticazione:</h2>
