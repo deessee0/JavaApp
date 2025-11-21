@@ -19,31 +19,16 @@ REM Check Java
 where java >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     echo ❌ ERRORE: Java non trovato nel sistema
-    echo    Installa Java 17 o superiore:
-    echo    - Windows: Scarica da https://adoptium.net
+    echo.
+    echo 💡 SUGGERIMENTO:
+    echo    Se non hai Java installato, usa lo script Docker:
+    echo    scripts\run-docker.bat
     echo.
     pause
     exit /b 1
 )
 
-REM Check Java version
-for /f "tokens=3" %%v in ('java -version 2^>^&1 ^| findstr /i "version"') do (
-    set JAVA_VERSION=%%v
-)
-set JAVA_VERSION=%JAVA_VERSION:"=%
-for /f "tokens=1 delims=." %%a in ("%JAVA_VERSION%") do set JAVA_MAJOR=%%a
-
-if %JAVA_MAJOR% LSS 17 (
-    echo ❌ ERRORE: Java 17 o superiore richiesto
-    echo    Versione attuale: Java %JAVA_MAJOR%
-    echo    Aggiorna Java a versione 17+
-    echo.
-    pause
-    exit /b 1
-)
-
-echo ✅ Java version: %JAVA_MAJOR%
-echo.
+REM Check Maven wrapper (ora nella root del progetto)
 
 REM Check Maven wrapper (ora nella root del progetto)
 if not exist "mvnw.cmd" (

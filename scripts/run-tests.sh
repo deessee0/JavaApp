@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# Script per eseguire test suite completa e generare report coverage
+# Script "Smart" per esecuzione test
+# Tenta di eseguire i test usando Docker (metodo preferito).
+# Se Docker non è disponibile, prova ad usare Java locale.
 # Uso: ./scripts/run-tests.sh
 
 set -e  # Exit on error
 
-# Cambia alla directory root del progetto (una directory sopra scripts/)
+# Cambia alla directory root del progetto
 cd "$(dirname "$0")/.."
 
 echo "================================================"
@@ -13,46 +15,47 @@ echo "🧪 Esecuzione Test Suite - Padel App"
 echo "================================================"
 echo ""
 
-# ========== ESECUZIONE TEST ==========
+# Funzione per eseguire test con Docker
+run_docker_tests() {
+    echo "🐳 Docker rilevato! Esecuzione test nel container..."
+    echo "   (Questo garantisce un ambiente pulito e isolato)"
+    echo ""
+    
+    # Build fino al target 'test'
+    # --progress=plain mostra l'output dei test in console
+    DOCKER_BUILDKIT=1 docker build --target test --progress=plain .
+    
+    echo ""
+    echo "✅ Test su Docker completati con successo!"
+}
 
-echo "📝 Esecuzione di tutti i test (59 test totali)..."
-echo ""
+# Funzione per eseguire test locali
+run_local_tests() {
+    echo "☕ Tentativo esecuzione locale (richiede Java)..."
+    
+    if ! ./mvnw -version &> /dev/null; then
+        echo "❌ ERRORE: Java/Maven non trovato."
+        echo "   Per eseguire i test serve Docker (consigliato) oppure Java 17+ installato."
+        exit 1
+    fi
+    
+    ./mvnw test jacoco:report
+    
+    echo ""
+    echo "✅ Test locali completati con successo!"
+    echo "📊 Report: target/site/jacoco/index.html"
+}
 
-./mvnw test
+# Logica di selezione
+if command -v docker &> /dev/null; then
+    run_docker_tests
+else
+    echo "⚠️  Docker non trovato."
+    run_local_tests
+fi
 
 echo ""
 echo "================================================"
-echo "✅ Test completati con successo!"
+echo "🎉 Suite di test terminata"
 echo "================================================"
-echo ""
-
-# ========== GENERAZIONE REPORT COVERAGE ==========
-
-echo "📊 Generazione report JaCoCo Coverage..."
-echo ""
-
-./mvnw jacoco:report
-
-echo ""
-echo "================================================"
-echo "✅ Report Coverage generato!"
-echo "================================================"
-echo ""
-echo "📈 Report HTML disponibile in:"
-echo "   target/site/jacoco/index.html"
-echo ""
-echo "Per visualizzare il report:"
-echo ""
-echo "  macOS:   open target/site/jacoco/index.html"
-echo "  Linux:   xdg-open target/site/jacoco/index.html"
-echo "  Windows: start target/site/jacoco/index.html"
-echo ""
-echo "Coverage attuale (circa):"
-echo "  - Instruction: ~54.8%"
-echo "  - Line:        ~54.2%"
-echo "  - Branch:      ~29.4%"
-echo ""
-echo "📌 Note:"
-echo "   Il coverage è focalizzato su business logic e design patterns,"
-echo "   non su presentation layer (WebController non testato)."
 echo ""

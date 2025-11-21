@@ -1,225 +1,88 @@
 # 🚀 Script di Avvio Rapido - Padel App
 
-Script multi-piattaforma (Linux/Mac/Windows) per avviare e testare facilmente l'applicazione.
+Questa suite di script permette di avviare e testare l'applicazione in modo semplice, sia con Docker (consigliato) che con Java locale.
 
-## 📋 Script Disponibili
+---
 
-### 1. **Avvio Locale** (consigliato per sviluppo)
-Avvia l'app usando Maven wrapper (richiede Java 17+).
+## 🐳 1. Metodo Consigliato (Docker)
+**Ideale per:** Chi non ha Java installato o vuole un ambiente pulito.
 
-**Linux/Mac:**
+### Avvio Applicazione
+```bash
+./scripts/run-docker.sh
+```
+- Costruisce l'immagine Docker ottimizzata.
+- Avvia l'app sulla porta **5000**.
+- Non richiede Java sul computer host.
+
+### Esecuzione Test
+```bash
+./scripts/run-tests.sh
+```
+- Rileva automaticamente Docker ed esegue i test in un container isolato.
+- Garantisce che i test girino nello stesso ambiente di produzione.
+
+---
+
+## ☕ 2. Metodo Alternativo (Java Locale)
+**Ideale per:** Sviluppo rapido o chi ha già l'ambiente configurato.
+**Prerequisiti:** Java 17+ installato.
+
+### Avvio Applicazione
 ```bash
 ./scripts/run-local.sh
 ```
+- Usa Maven Wrapper (`mvnw`) per avviare l'app.
+- Se Java non è trovato, ti suggerirà di usare Docker.
 
-**Windows:**
-```cmd
-scripts\run-local.bat
+### Esecuzione Test
+```bash
+./scripts/run-tests.sh
 ```
+- Se Docker **NON** è installato, lo script proverà automaticamente ad usare Java locale.
+- Genera report HTML in `target/site/jacoco/index.html`.
 
-**Prerequisiti:**
-- Java 17 o superiore
-- Maven wrapper (incluso nel progetto)
+---
 
-**Accesso:**
-- Homepage: http://localhost:5000
-- H2 Console: http://localhost:5000/h2-console
-- Health Check: http://localhost:5000/actuator/health
+## 🔗 Accesso Applicazione
+Una volta avviata (con Docker o Locale):
 
-**Credenziali demo:**
+- **Homepage:** [http://localhost:5000](http://localhost:5000)
+- **H2 Console:** [http://localhost:5000/h2-console](http://localhost:5000/h2-console)
+- **Health Check:** [http://localhost:5000/actuator/health](http://localhost:5000/actuator/health)
+
+**Credenziali Demo:**
 - Email: `margherita.biffi@padel.it`
 - Password: `password123`
 
 ---
 
-### 2. **Esecuzione Test**
-Esegue tutti i 59 test e genera report coverage JaCoCo.
+## 🛠️ Note Tecniche per la Valutazione
 
-**Linux/Mac:**
-```bash
-./scripts/run-tests.sh
-```
+### Architettura Docker
+Il `Dockerfile` utilizza una **Multi-Stage Build** per efficienza e pulizia:
+1.  **Base**: Cache delle dipendenze Maven.
+2.  **Test**: Esegue la suite di test (`mvnw test`). Se fallisce, il build si ferma.
+3.  **Build**: Compila il JAR finale (senza rieseguire i test).
+4.  **Runtime**: Immagine leggera (`eclipse-temurin:17-jre-alpine`) per l'esecuzione.
 
-**Windows:**
-```cmd
-scripts\run-tests.bat
-```
-
-**Output:**
-- Report HTML: `target/site/jacoco/index.html`
-- Coverage attuale: ~54% (focalizzato su business logic)
-
-**Aprire il report:**
-- **macOS:** `open target/site/jacoco/index.html`
-- **Linux:** `xdg-open target/site/jacoco/index.html`
-- **Windows:** `start target\site\jacoco\index.html`
+### Script "Smart"
+Lo script `run-tests.sh` è progettato per essere universale:
+- **Priorità Docker**: Se Docker è presente, lo usa per garantire riproducibilità.
+- **Fallback Java**: Se Docker manca, usa l'ambiente locale.
 
 ---
 
-### 3. **Avvio con Docker** (per deployment production-ready)
-Build e avvia l'app in container Docker isolato.
+## 🐛 Troubleshooting
 
-**Linux/Mac:**
-```bash
-./scripts/run-docker.sh
-```
-
-**Windows:**
-```cmd
-scripts\run-docker.bat
-```
-
-**Prerequisiti:**
-- Docker Desktop (include Docker Compose)
-- Docker daemon in esecuzione
-
-**Comandi utili:**
-```bash
-# Nota: Usa "docker compose" (nuovo) o "docker-compose" (vecchio) a seconda della tua installazione
-# Lo script rileva automaticamente quale è disponibile
-
-# Visualizza logs
-docker compose logs -f  # oppure: docker-compose logs -f
-
-# Verifica stato container
-docker compose ps  # oppure: docker-compose ps
-
-# Ferma applicazione
-docker compose down  # oppure: docker-compose down
-
-# Restart
-docker compose restart  # oppure: docker-compose restart
-```
-
-⏳ **Nota:** L'app impiega ~40 secondi per l'avvio completo (health check configurato).
-
----
-
-## 🛠️ Troubleshooting
-
-### ❌ "Java non trovato"
-**Soluzione:** Installa Java 17 o superiore:
-- **Windows:** https://adoptium.net/
-- **macOS:** `brew install openjdk@17`
-- **Ubuntu/Debian:** `sudo apt install openjdk-17-jdk`
-
-Verifica installazione:
-```bash
-java -version
-```
-
----
-
-### ❌ "Docker non è in esecuzione"
-**Soluzione:** 
-1. Avvia Docker Desktop
-2. Attendi che l'icona Docker diventi verde
-3. Riprova lo script
-
-Verifica:
-```bash
-docker ps
-```
-
----
-
-### ❌ "Permission denied" (Linux/Mac)
-**Soluzione:** Rendi eseguibili gli script:
+### "Permission denied" su Linux/Mac
+Rendi eseguibili gli script:
 ```bash
 chmod +x scripts/*.sh
 ```
 
----
+### Porta 5000 occupata
+Se l'avvio fallisce perché la porta è occupata:
+1.  Trova il processo: `lsof -i :5000`
+2.  Termina il processo o ferma il container precedente: `docker stop padel-app`
 
-### ❌ Build Docker fallita
-**Soluzione:**
-1. Verifica spazio disco disponibile (richiesti ~500MB)
-2. Pulisci cache Docker:
-   ```bash
-   docker system prune -a
-   ```
-3. Riprova il build
-
----
-
-## 📊 Coverage Report
-
-Il coverage è **intenzionalmente** focalizzato su:
-- ✅ Business logic (Service layer)
-- ✅ Design patterns (Observer, Strategy, Singleton)
-- ✅ Model validation e JPA entities
-
-**Non testato:**
-- ❌ Presentation layer (WebController) - focus su funzionalità core
-- ❌ Template Thymeleaf - testati manualmente
-
-**Statistiche attuali:**
-- 59 test totali
-- Instruction Coverage: ~54.8%
-- Line Coverage: ~54.2%
-- Branch Coverage: ~29.4%
-
----
-
-## 🎯 Quick Start per Professori/Revisori
-
-**Avvio in 30 secondi (con Java installato):**
-```bash
-# Linux/Mac
-./scripts/run-local.sh
-
-# Windows
-scripts\run-local.bat
-```
-
-**Verifica funzionamento:**
-1. Attendi messaggio "Started PadelAppApplication"
-2. Apri http://localhost:5000
-3. Login con: `margherita.biffi@padel.it` / `password123`
-
-**Test automatici:**
-```bash
-# Linux/Mac
-./scripts/run-tests.sh
-
-# Windows
-scripts\run-tests.bat
-```
-
-Aspettati: **59/59 test passati** ✅
-
----
-
-## 📝 Note Tecniche
-
-### Esecuzione Script
-**✨ Gli script cambiano automaticamente directory alla root del progetto**, quindi funzionano indipendentemente da dove vengono eseguiti:
-
-```bash
-# Tutti questi comandi funzionano correttamente:
-./scripts/run-local.sh          # Dalla root
-cd scripts && ./run-local.sh    # Dalla directory scripts
-scripts/run-local.sh            # Con percorso relativo
-```
-
-**Implementazione:**
-- Windows (.bat): `cd /d "%~dp0\.."`
-- Linux/Mac (.sh): `cd "$(dirname "$0")/.."`
-
-Questo garantisce che Maven wrapper (`mvnw` / `mvnw.cmd`) venga sempre trovato nella root del progetto.
-
-### Configurazione
-- **Port 5000:** Configurato in `application.properties`
-- **Database:** H2 in-memory (auto-popolato con dati demo)
-- **Hot Reload:** Abilitato con Spring DevTools
-- **Health Check:** Endpoint `/actuator/health` per monitoring
-- **Docker:** Multi-stage build (JDK build → JRE runtime, ~150MB finale)
-
----
-
-## 🐛 Segnalazione Bug
-
-Se riscontri problemi:
-1. Verifica prerequisiti (Java/Docker versioni)
-2. Leggi i log di errore completi
-3. Controlla `QUICKSTART.md` per troubleshooting dettagliato
