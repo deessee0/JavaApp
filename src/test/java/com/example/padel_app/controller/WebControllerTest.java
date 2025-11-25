@@ -35,7 +35,7 @@ import static org.mockito.Mockito.*;
  * OBIETTIVO: Coverage dei metodi chiave del controller
  *
  * METODI TESTATI:
- * - index (home page con lista matches)
+ * - home (home page con lista matches)
  * - myMatches (partite dell'utente)
  * - createMatch (creazione partita)
  * - joinMatch (iscrizione)
@@ -47,6 +47,16 @@ import static org.mockito.Mockito.*;
  * - Mock di HttpSession e Model
  * - Verifica view names e redirect
  * - Verifica attributi aggiunti al model
+ *
+ * FIXES APPLICATI (Copilot Review):
+ * - Corretto index() → home()
+ * - Corretto model attribute "matches" → "availableMatches"
+ * - Corretto mock matchService.getAvailableMatches() → getAllMatches() + sortMatches()
+ * - Corretto allMatches() → matches()
+ * - Corretto usersList() → users()
+ * - Corretto createMatch() con CreateMatchRequest
+ * - Corretto mock matchService.createMatch() → saveMatch()
+ * - Corretto flash attribute "successMessage" → "success" e "errorMessage" → "error"
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WebController Integration Tests")
@@ -98,39 +108,43 @@ class WebControllerTest {
         testMatch.setCreator(testUser);
     }
 
-    // ==================== INDEX (HOME PAGE) ====================
+    // ==================== HOME PAGE ====================
 
     @Test
-    @DisplayName("index - should show matches when user authenticated")
-    void index_shouldShowMatches_whenAuthenticated() {
+    @DisplayName("home - should show matches when user authenticated")
+    void home_shouldShowMatches_whenAuthenticated() {
         // Arrange
         List<Match> matches = Arrays.asList(testMatch);
         when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
-        when(matchService.getAvailableMatches(any(), any())).thenReturn(matches);
+        when(matchService.getAllMatches()).thenReturn(matches);
+        when(matchService.sortMatches(any(), eq("date"))).thenReturn(matches);
+        when(registrationService.isUserRegistered(testUser, testMatch)).thenReturn(false);
+        when(registrationService.getActiveRegistrationsCount(testMatch)).thenReturn(2);
         when(model.addAttribute(anyString(), any())).thenReturn(model);
 
         // Act
-        String viewName = webController.index(session, model, null, null);
+        String viewName = webController.home(session, null, "date", model);
 
         // Assert
         assertThat(viewName).isEqualTo("index");
         verify(model).addAttribute(eq("currentUser"), eq(testUser));
-        verify(model).addAttribute(eq("matches"), eq(matches));
-        verify(matchService).getAvailableMatches(any(), any());
+        verify(model).addAttribute(eq("availableMatches"), any());
+        verify(matchService).getAllMatches();
+        verify(matchService).sortMatches(any(), eq("date"));
     }
 
     @Test
-    @DisplayName("index - should redirect to login when not authenticated")
-    void index_shouldRedirectToLogin_whenNotAuthenticated() {
+    @DisplayName("home - should redirect to login when not authenticated")
+    void home_shouldRedirectToLogin_whenNotAuthenticated() {
         // Arrange
         when(userSessionService.getCurrentUser(session)).thenReturn(null);
 
         // Act
-        String viewName = webController.index(session, model, null, null);
+        String viewName = webController.home(session, null, "date", model);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/login");
-        verify(matchService, never()).getAvailableMatches(any(), any());
+        verify(matchService, never()).getAllMatches();
     }
 
     // ==================== MY MATCHES ====================
@@ -145,15 +159,17 @@ class WebControllerTest {
 
         when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
         when(registrationService.getActiveRegistrationsByUser(testUser)).thenReturn(registrations);
+        when(matchService.sortMatches(any(), eq("date"))).thenReturn(Arrays.asList(testMatch));
+        when(registrationService.getActiveRegistrationsCount(testMatch)).thenReturn(2);
         when(model.addAttribute(anyString(), any())).thenReturn(model);
 
         // Act
-        String viewName = webController.myMatches(session, model);
+        String viewName = webController.myMatches(session, null, "date", model);
 
         // Assert
         assertThat(viewName).isEqualTo("my-matches");
         verify(model).addAttribute(eq("currentUser"), eq(testUser));
-        verify(model).addAttribute(eq("registrations"), eq(registrations));
+        verify(model).addAttribute(eq("registeredMatches"), any());
         verify(registrationService).getActiveRegistrationsByUser(testUser);
     }
 
@@ -164,7 +180,7 @@ class WebControllerTest {
         when(userSessionService.getCurrentUser(session)).thenReturn(null);
 
         // Act
-        String viewName = webController.myMatches(session, model);
+        String viewName = webController.myMatches(session, null, "date", model);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/login");
@@ -185,7 +201,7 @@ class WebControllerTest {
 
         // Assert
         assertThat(viewName).isEqualTo("create-match");
-        verify(model).addAttribute(eq("currentUser"), eq(testUser));
+        verify(model).addAttribute(eq("matchRequest"), any());
         verify(model).addAttribute(eq("levels"), any());
     }
 
@@ -193,42 +209,38 @@ class WebControllerTest {
     @DisplayName("createMatch - should create match and join automatically")
     void createMatch_shouldCreateAndJoin_whenValid() {
         // Arrange
+        WebController.CreateMatchRequest request = new WebController.CreateMatchRequest();
+        request.setLocation("Campo 1");
+        request.setDescription("Test match");
+        request.setRequiredLevel("INTERMEDIO");
+        request.setDateTime("2024-12-25T15:00:00");
+
         when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
-        when(matchService.createMatch(any(), any(), any(), any(), any())).thenReturn(testMatch);
+        when(matchService.saveMatch(any(Match.class))).thenReturn(testMatch);
         when(registrationService.joinMatch(testUser, testMatch)).thenReturn(new Registration());
-        when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
 
         // Act
-        String viewName = webController.createMatch(
-            session,
-            "Campo 1",
-            "2024-12-25",
-            "15:00",
-            "INTERMEDIO",
-            redirectAttributes
-        );
+        String viewName = webController.createMatch(session, request, model);
 
         // Assert
-        assertThat(viewName).isEqualTo("redirect:/");
-        verify(matchService).createMatch(any(), any(), any(), any(), eq(testUser));
+        assertThat(viewName).isEqualTo("redirect:/my-matches");
+        verify(matchService).saveMatch(any(Match.class));
         verify(registrationService).joinMatch(testUser, testMatch);
-        verify(redirectAttributes).addFlashAttribute(eq("successMessage"), anyString());
     }
 
     @Test
     @DisplayName("createMatch - should redirect to login when not authenticated")
     void createMatch_shouldRedirectToLogin_whenNotAuthenticated() {
         // Arrange
+        WebController.CreateMatchRequest request = new WebController.CreateMatchRequest();
         when(userSessionService.getCurrentUser(session)).thenReturn(null);
 
         // Act
-        String viewName = webController.createMatch(
-            session, "Campo 1", "2024-12-25", "15:00", "INTERMEDIO", redirectAttributes
-        );
+        String viewName = webController.createMatch(session, request, model);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/login");
-        verify(matchService, never()).createMatch(any(), any(), any(), any(), any());
+        verify(matchService, never()).saveMatch(any());
     }
 
     // ==================== JOIN MATCH ====================
@@ -243,12 +255,12 @@ class WebControllerTest {
         when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
 
         // Act
-        String viewName = webController.joinMatch(1L, session, redirectAttributes);
+        String viewName = webController.joinMatch(session, 1L, redirectAttributes);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/");
         verify(registrationService).joinMatch(testUser, testMatch);
-        verify(redirectAttributes).addFlashAttribute(eq("successMessage"), anyString());
+        verify(redirectAttributes).addFlashAttribute(eq("success"), anyString());
     }
 
     @Test
@@ -260,12 +272,12 @@ class WebControllerTest {
         when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
 
         // Act
-        String viewName = webController.joinMatch(999L, session, redirectAttributes);
+        String viewName = webController.joinMatch(session, 999L, redirectAttributes);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/");
         verify(registrationService, never()).joinMatch(any(), any());
-        verify(redirectAttributes).addFlashAttribute(eq("errorMessage"), anyString());
+        verify(redirectAttributes).addFlashAttribute(eq("error"), anyString());
     }
 
     @Test
@@ -279,11 +291,11 @@ class WebControllerTest {
         when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
 
         // Act
-        String viewName = webController.joinMatch(1L, session, redirectAttributes);
+        String viewName = webController.joinMatch(session, 1L, redirectAttributes);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/");
-        verify(redirectAttributes).addFlashAttribute(eq("errorMessage"), anyString());
+        verify(redirectAttributes).addFlashAttribute(eq("error"), anyString());
     }
 
     // ==================== LEAVE MATCH ====================
@@ -298,12 +310,12 @@ class WebControllerTest {
         when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
 
         // Act
-        String viewName = webController.leaveMatch(1L, session, redirectAttributes);
+        String viewName = webController.leaveMatch(session, 1L, redirectAttributes);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/my-matches");
         verify(registrationService).leaveMatch(testUser, testMatch);
-        verify(redirectAttributes).addFlashAttribute(eq("successMessage"), anyString());
+        verify(redirectAttributes).addFlashAttribute(eq("success"), anyString());
     }
 
     @Test
@@ -313,32 +325,33 @@ class WebControllerTest {
         when(userSessionService.getCurrentUser(session)).thenReturn(null);
 
         // Act
-        String viewName = webController.leaveMatch(1L, session, redirectAttributes);
+        String viewName = webController.leaveMatch(session, 1L, redirectAttributes);
 
         // Assert
         assertThat(viewName).isEqualTo("redirect:/login");
         verify(registrationService, never()).leaveMatch(any(), any());
     }
 
-    // ==================== ALL MATCHES ====================
+    // ==================== MATCHES LIST ====================
 
     @Test
-    @DisplayName("allMatches - should show all matches when authenticated")
-    void allMatches_shouldShowAllMatches_whenAuthenticated() {
+    @DisplayName("matches - should show all matches when authenticated")
+    void matches_shouldShowAllMatches_whenAuthenticated() {
         // Arrange
         List<Match> matches = Arrays.asList(testMatch);
         when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
         when(matchService.getAllMatches()).thenReturn(matches);
+        when(matchService.sortMatches(matches, "date")).thenReturn(matches);
         when(model.addAttribute(anyString(), any())).thenReturn(model);
 
         // Act
-        String viewName = webController.allMatches(session, model);
+        String viewName = webController.matches(session, null, "date", model);
 
         // Assert
         assertThat(viewName).isEqualTo("matches");
-        verify(model).addAttribute(eq("currentUser"), eq(testUser));
         verify(model).addAttribute(eq("matches"), eq(matches));
         verify(matchService).getAllMatches();
+        verify(matchService).sortMatches(matches, "date");
     }
 
     // ==================== MY PROFILE ====================
@@ -363,8 +376,8 @@ class WebControllerTest {
     // ==================== USERS LIST ====================
 
     @Test
-    @DisplayName("usersList - should show users list when authenticated")
-    void usersList_shouldShowUsersList_whenAuthenticated() {
+    @DisplayName("users - should show users list when authenticated")
+    void users_shouldShowUsersList_whenAuthenticated() {
         // Arrange
         List<User> users = Arrays.asList(testUser);
         when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
@@ -372,11 +385,10 @@ class WebControllerTest {
         when(model.addAttribute(anyString(), any())).thenReturn(model);
 
         // Act
-        String viewName = webController.usersList(session, model);
+        String viewName = webController.users(session, model);
 
         // Assert
         assertThat(viewName).isEqualTo("users");
-        verify(model).addAttribute(eq("currentUser"), eq(testUser));
         verify(model).addAttribute(eq("users"), eq(users));
         verify(userService).getAllUsers();
     }
