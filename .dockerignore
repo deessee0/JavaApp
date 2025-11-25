@@ -41,7 +41,7 @@ docs/
 scripts/
 
 # Test resources
-src/test/
+# src/test/
 
 # Maven wrapper (mantieni tutto per build offline affidabile)
 
