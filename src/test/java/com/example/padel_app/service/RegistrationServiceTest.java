@@ -202,7 +202,7 @@ class RegistrationServiceTest {
         when(registrationRepository.findByUserAndMatchAndStatus(testUser, testMatch, RegistrationStatus.CANCELLED))
             .thenReturn(Optional.empty());
         when(registrationRepository.save(any(Registration.class))).thenReturn(testRegistration);
-        doNothing().when(matchService).checkAndConfirmMatch(testMatch);
+        when(matchService.checkAndConfirmMatch(testMatch)).thenReturn(testMatch);
 
         // Act
         Registration result = registrationService.joinMatch(testUser, testMatch);

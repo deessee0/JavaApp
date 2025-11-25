@@ -46,7 +46,13 @@ class MatchRepositoryTest {
         Match popularMatch = createMatch("Popular", MatchStatus.WAITING);
         entityManager.persist(popularMatch);
         createRegistration(user, popularMatch);
-        createRegistration(user, popularMatch); // Tecnicamente duplicato, ma per il count va bene nel test
+
+        
+        User user2 = new User();
+        user2.setUsername("u2"); user2.setEmail("u2@test.com"); user2.setPassword("pwd");
+        user2.setFirstName("F2"); user2.setLastName("L2"); user2.setDeclaredLevel(Level.INTERMEDIO);
+        entityManager.persist(user2);
+        createRegistration(user2, popularMatch);
 
         // Match 2: 0 registrations
         Match unpopularMatch = createMatch("Unpopular", MatchStatus.WAITING);
