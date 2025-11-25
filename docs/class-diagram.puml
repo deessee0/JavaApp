@@ -102,24 +102,25 @@ package "com.example.padel_app.service" <<Rectangle>> {
   
   class MatchService {
     - matchRepository: MatchRepository
-    - userRepository: UserRepository
     - registrationRepository: RegistrationRepository
-    - registrationService: RegistrationService
+    - userRepository: UserRepository
     - eventPublisher: ApplicationEventPublisher
-    - strategies: Map<String, MatchSortingStrategy>
+    - sortingStrategies: Map<String, MatchSortingStrategy>
     __
-    + createMatch(CreateMatchRequest): Match
-    + joinMatch(matchId: Long, userId: Long): Registration
-    + leaveMatch(matchId: Long, userId: Long): void
-    + finishMatch(matchId: Long): void
     + getAllMatches(): List<Match>
-    + getMatchesSorted(sortType: String): List<Match>
-    + filterByStatus(status: MatchStatus): List<Match>
-    + filterByLevel(level: Level): List<Match>
-    __
-    - autoConfirmIfFull(match: Match): void
-    - publishMatchConfirmedEvent(match: Match): void
-    - publishMatchFinishedEvent(match: Match): void
+    + getMatchesByStatus(status: MatchStatus): List<Match>
+    + getMatchesByLevel(level: Level): List<Match>
+    + getMatchesOrderedBy(strategy: String): List<Match>
+    + getMatchesOrderedByDate(): List<Match>
+    + getMatchesOrderedByPopularity(): List<Match>
+    + getMatchesOrderedByLevel(): List<Match>
+    + sortMatches(matches: List<Match>, strategy: String): List<Match>
+    + getMatchById(id: Long): Optional<Match>
+    + saveMatch(match: Match): Match
+    + deleteMatch(id: Long): void
+    + checkAndConfirmMatch(match: Match): Match
+    + markExpiredMatchesAsFinished(): void
+    + finishMatch(matchId: Long): Match
   }
   
   class RegistrationService {
@@ -140,15 +141,14 @@ package "com.example.padel_app.service" <<Rectangle>> {
   class FeedbackService {
     - feedbackRepository: FeedbackRepository
     - userRepository: UserRepository
-    - matchRepository: MatchRepository
     __
-    + createFeedback(CreateFeedbackRequest): Feedback
+    + createFeedback(author: User, targetUser: User, match: Match, suggestedLevel: Level, comment: String): Feedback
     + updatePerceivedLevel(userId: Long): void
-    + getFeedbacksForUser(userId: Long): List<Feedback>
-    + getPlayersForFeedback(matchId: Long, userId: Long): List<User>
-    __
-    - calculateAverageLevel(feedbacks: List<Feedback>): Level
-    - validateFeedback(request): void
+    + getFeedbacksByTargetUser(user: User): List<Feedback>
+    + getFeedbacksByAuthor(user: User): List<Feedback>
+    + getFeedbacksByAuthorAndMatch(author: User, match: Match): List<Feedback>
+    + getFeedbacksByMatch(match: Match): List<Feedback>
+    + getFeedback(author: User, targetUser: User, match: Match): Optional<Feedback>
   }
   
   class UserService {
@@ -245,20 +245,41 @@ package "com.example.padel_app.repository" <<Rectangle>> {
   
   interface MatchRepository extends JpaRepository {
     + findByStatus(status: MatchStatus): List<Match>
-    + findAllWithCreator(): List<Match> {@Query with JOIN FETCH}
+    + findByType(type: MatchType): List<Match>
     + findByRequiredLevel(level: Level): List<Match>
+    + findAllOrderByDate(): List<Match> {@Query ORDER BY dateTime}
+    + findAllOrderByPopularity(): List<Match> {@Query ORDER BY SIZE(registrations)}
+    + findAllOrderByLevel(): List<Match> {@Query ORDER BY requiredLevel}
+    + findByDateTimeBefore(dateTime: LocalDateTime): List<Match>
+    + findByStatusAndDateTimeAfter(status: MatchStatus, dateTime: LocalDateTime): List<Match>
+    + findByRequiredLevelAndStatus(level: Level, status: MatchStatus): List<Match>
+    + findAllWithCreator(): List<Match> {@Query JOIN FETCH creator, registrations}
+    + findByStatusWithCreator(status: MatchStatus): List<Match> {@Query JOIN FETCH}
+    + findByRequiredLevelWithCreator(level: Level): List<Match> {@Query JOIN FETCH}
+    + findAllOrderByDateWithCreator(): List<Match> {@Query JOIN FETCH + ORDER BY}
+    + findAllOrderByPopularityWithCreator(): List<Match> {@Query JOIN FETCH + ORDER BY}
+    + findAllOrderByLevelWithCreator(): List<Match> {@Query JOIN FETCH + ORDER BY}
   }
   
   interface RegistrationRepository extends JpaRepository {
+    + findByUser(user: User): List<Registration>
+    + findByMatch(match: Match): List<Registration>
     + findByMatchAndUser(match: Match, user: User): Optional<Registration>
     + findByMatchAndStatus(match: Match, status: RegistrationStatus): List<Registration>
-    + findByMatch(match: Match): List<Registration>
+    + findByUserAndMatch(user: User, match: Match): Optional<Registration>
+    + findByUserAndMatchAndStatus(user: User, match: Match, status: RegistrationStatus): Optional<Registration>
+    + findByUserAndStatus(user: User, status: RegistrationStatus): List<Registration>
+    + existsByUserAndMatchAndStatus(user: User, match: Match, status: RegistrationStatus): boolean
+    + countActiveRegistrationsByMatch(match: Match): int {@Query COUNT with status=JOINED}
+    + countAllRegistrationsByMatch(match: Match): int {@Query COUNT all}
   }
   
   interface FeedbackRepository extends JpaRepository {
-    + findByAuthorAndTargetUserAndMatch(author, target, match): Optional<Feedback>
+    + findByAuthorAndTargetUserAndMatch(author: User, targetUser: User, match: Match): Optional<Feedback>
     + findByTargetUser(user: User): List<Feedback>
+    + findByAuthor(user: User): List<Feedback>
     + findByMatch(match: Match): List<Feedback>
+    + findByAuthorAndMatch(author: User, match: Match): List<Feedback>
   }
 }
 
@@ -286,17 +307,19 @@ package "com.example.padel_app.controller" <<Rectangle>> {
     - feedbackService: FeedbackService
     - userSessionService: UserSessionService
     __
-    + home(model: Model): String
-    + myMatches(model: Model): String
-    + matches(model: Model, status: String, sort: String): String
-    + users(model: Model): String
-    + createMatchForm(model: Model): String
-    + createMatch(request: CreateMatchRequest): String
-    + joinMatch(id: Long): String
-    + leaveMatch(id: Long): String
-    + finishMatch(id: Long): String
-    + feedbackForm(id: Long, model: Model): String
-    + submitFeedback(matchId, targetUserId, suggestedLevel, comment): String
+    + home(session: HttpSession, level: String, sort: String, model: Model): String
+    + myMatches(session: HttpSession, status: String, sort: String, model: Model): String
+    + matches(session: HttpSession, level: String, sort: String, model: Model): String
+    + users(session: HttpSession, model: Model): String
+    + createMatchForm(session: HttpSession, model: Model): String
+    + createMatch(session: HttpSession, request: CreateMatchRequest, model: Model): String
+    + joinMatch(session: HttpSession, id: Long, redirectAttributes: RedirectAttributes): String
+    + leaveMatch(session: HttpSession, id: Long, redirectAttributes: RedirectAttributes): String
+    + finishMatch(session: HttpSession, id: Long, redirectAttributes: RedirectAttributes): String
+    + feedbackForm(session: HttpSession, id: Long, model: Model): String
+    + submitFeedback(session: HttpSession, id: Long, targetUserId: Long, suggestedLevel: String, comment: String, redirectAttributes: RedirectAttributes): String
+    + myProfile(session: HttpSession, model: Model): String
+    + updateDeclaredLevel(session: HttpSession, declaredLevel: String, redirectAttributes: RedirectAttributes): String
   }
 }
 
@@ -341,18 +364,16 @@ Feedback "*" -- "1" Match
 ' Service dependencies
 MatchService --> MatchRepository
 MatchService --> UserRepository : increments matchesPlayed >
-MatchService --> RegistrationRepository : queries >
-MatchService --> RegistrationService
+MatchService --> RegistrationRepository : queries count >
 MatchService "1" o-- "*" MatchSortingStrategy : uses strategies >
 MatchService ..> MatchConfirmedEvent : <<publishes>>
 MatchService ..> MatchFinishedEvent : <<publishes>>
 
 RegistrationService --> RegistrationRepository
-RegistrationService --> MatchService : delegates >
+RegistrationService --> MatchService : calls checkAndConfirmMatch >
 
 FeedbackService --> FeedbackRepository
 FeedbackService --> UserRepository
-FeedbackService --> MatchRepository
 
 UserService --> UserRepository
 
