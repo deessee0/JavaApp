@@ -154,9 +154,12 @@ class FeedbackServiceTest {
     void updatePerceivedLevel_multipleFeedbacks_shouldCalculateAverage() {
         // Arrange: 3 feedback → INTERMEDIO(1), AVANZATO(2), INTERMEDIO(1)
         // Media: (1+2+1)/3 = 1.33 → round = 1 → INTERMEDIO
-        Feedback f1 = createFeedback(alice, bob, testMatch, Level.INTERMEDIO);
-        Feedback f2 = createFeedback(alice, bob, testMatch, Level.AVANZATO);
-        Feedback f3 = createFeedback(alice, bob, testMatch, Level.INTERMEDIO);
+        Match match1 = new Match();
+        Match match2 = new Match();
+        Match match3 = new Match();
+        Feedback f1 = createFeedback(alice, bob, match1, Level.INTERMEDIO);
+        Feedback f2 = createFeedback(alice, bob, match2, Level.AVANZATO);
+        Feedback f3 = createFeedback(alice, bob, match3, Level.INTERMEDIO);
 
         when(userRepository.findById(bob.getId())).thenReturn(Optional.of(bob));
         when(feedbackRepository.findByTargetUser(bob)).thenReturn(Arrays.asList(f1, f2, f3));
