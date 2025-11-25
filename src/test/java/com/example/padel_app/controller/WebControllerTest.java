@@ -48,15 +48,6 @@ import static org.mockito.Mockito.*;
  * - Verifica view names e redirect
  * - Verifica attributi aggiunti al model
  *
- * FIXES APPLICATI (Copilot Review):
- * - Corretto index() → home()
- * - Corretto model attribute "matches" → "availableMatches"
- * - Corretto mock matchService.getAvailableMatches() → getAllMatches() + sortMatches()
- * - Corretto allMatches() → matches()
- * - Corretto usersList() → users()
- * - Corretto createMatch() con CreateMatchRequest
- * - Corretto mock matchService.createMatch() → saveMatch()
- * - Corretto flash attribute "successMessage" → "success" e "errorMessage" → "error"
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WebController Integration Tests")
