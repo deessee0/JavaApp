@@ -8,10 +8,9 @@
 **Studente**: [Nome Cognome - Matricola]  
 
 **Repository**: [Link GitHub]  
-**Demo Live**: [Link Replit o deployment]
+**Demo Live**: [ deployment]
 
 ## 📝 Descrizione del Progetto
-
 ### Ambito
 
 L'applicazione **App Padel** è un sistema di gestione partite di padel tra giocatori sconosciuti che permette di:
@@ -399,13 +398,12 @@ xdg-open target/site/jacoco/index.html  # Linux
 start target/site/jacoco/index.html  # Windows
 ```
 
-**Test Suite**: 59 test totali  
+**Test Suite**: 176 test totali  
 **Coverage Attuale**: 
-- Instruction: ~54.8%
-- Line: ~54.2%
-- Branch: ~29.4%
+- Instruction: 85.32%
+- Line: >80%
 
-**Nota**: Il coverage è focalizzato su **business logic** e **design patterns**, non su presentation layer (WebController intenzionalmente non testato per scelta didattica).
+**Nota**: Il coverage supera l'obiettivo dell'80% richiesto, coprendo business logic, controller e design patterns.
 
 ---
 
