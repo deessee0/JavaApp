@@ -31,7 +31,7 @@
 **Testing**:
 - JUnit 5
 - Mockito
-- JaCoCo (code coverage)
+- JaCoCo (code coverage >85%)
 
 ### Principi Architetturali Applicati
 
@@ -222,7 +222,7 @@ public interface MatchSortingStrategy {
 **Strategie Concrete**:
 
 ```java
-@Component("date")
+@Component("dateSorting")
 public class DateSortingStrategy implements MatchSortingStrategy {
     @Override
     public List<Match> sort(List<Match> matches) {
@@ -232,7 +232,7 @@ public class DateSortingStrategy implements MatchSortingStrategy {
     }
 }
 
-@Component("popularity")
+@Component("popularitySorting")
 public class PopularitySortingStrategy implements MatchSortingStrategy {
     @Override
     public List<Match> sort(List<Match> matches) {
