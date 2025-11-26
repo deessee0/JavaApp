@@ -26,6 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -383,4 +384,160 @@ class WebControllerTest {
         verify(model).addAttribute(eq("users"), eq(users));
         verify(userService).getAllUsers();
     }
+    // ==================== FINISH MATCH ====================
+
+    @Test
+    @DisplayName("finishMatch - should finish successfully when creator")
+    void finishMatch_shouldFinishSuccessfully_whenCreator() {
+        // Arrange
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchById(1L)).thenReturn(Optional.of(testMatch));
+        when(matchService.finishMatch(1L)).thenReturn(testMatch);
+        when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
+
+        // Act
+        String viewName = webController.finishMatch(session, 1L, redirectAttributes);
+
+        // Assert
+        assertThat(viewName).isEqualTo("redirect:/my-matches");
+        verify(matchService).finishMatch(1L);
+        verify(redirectAttributes).addFlashAttribute(eq("success"), anyString());
+    }
+
+    @Test
+    @DisplayName("finishMatch - should fail when not creator")
+    void finishMatch_shouldFail_whenNotCreator() {
+        // Arrange
+        User otherUser = new User();
+        otherUser.setId(2L);
+        testMatch.setCreator(otherUser);
+
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchById(1L)).thenReturn(Optional.of(testMatch));
+        when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
+
+        // Act
+        String viewName = webController.finishMatch(session, 1L, redirectAttributes);
+
+        // Assert
+        assertThat(viewName).isEqualTo("redirect:/my-matches");
+        verify(matchService, never()).finishMatch(anyLong());
+        verify(redirectAttributes).addFlashAttribute(eq("error"), anyString());
+    }
+
+    @Test
+    @DisplayName("finishMatch - should handle match not found")
+    void finishMatch_shouldHandleMatchNotFound() {
+        // Arrange
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchById(999L)).thenReturn(Optional.empty());
+        when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
+
+        // Act
+        String viewName = webController.finishMatch(session, 999L, redirectAttributes);
+
+        // Assert
+        assertThat(viewName).isEqualTo("redirect:/my-matches");
+        verify(matchService, never()).finishMatch(anyLong());
+        verify(redirectAttributes).addFlashAttribute(eq("error"), anyString());
+    }
+
+    // ==================== FEEDBACK ====================
+
+    @Test
+    @DisplayName("feedbackForm - should show form when match finished")
+    void feedbackForm_shouldShowForm_whenFinished() {
+        // Arrange
+        testMatch.setStatus(MatchStatus.FINISHED);
+        User player2 = new User();
+        player2.setId(2L);
+        Registration reg2 = new Registration();
+        reg2.setUser(player2);
+        
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchById(1L)).thenReturn(Optional.of(testMatch));
+        when(feedbackService.getFeedbacksByAuthorAndMatch(testUser, testMatch)).thenReturn(Collections.emptyList());
+        when(registrationService.getActiveRegistrationsByMatch(testMatch)).thenReturn(Arrays.asList(reg2));
+        when(model.addAttribute(anyString(), any())).thenReturn(model);
+
+        // Act
+        String viewName = webController.feedbackForm(session, 1L, model);
+
+        // Assert
+        assertThat(viewName).isEqualTo("feedback");
+        verify(model).addAttribute(eq("match"), eq(testMatch));
+        verify(model).addAttribute(eq("players"), any());
+    }
+
+    @Test
+    @DisplayName("feedbackForm - should redirect when match not finished")
+    void feedbackForm_shouldRedirect_whenNotFinished() {
+        // Arrange
+        testMatch.setStatus(MatchStatus.WAITING);
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchById(1L)).thenReturn(Optional.of(testMatch));
+
+        // Act
+        String viewName = webController.feedbackForm(session, 1L, model);
+
+        // Assert
+        assertThat(viewName).isEqualTo("redirect:/my-matches");
+    }
+
+    @Test
+    @DisplayName("submitFeedback - should submit successfully")
+    void submitFeedback_shouldSubmitSuccessfully() {
+        // Arrange
+        User targetUser = new User();
+        targetUser.setId(2L);
+        
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchById(1L)).thenReturn(Optional.of(testMatch));
+        when(userService.getUserById(2L)).thenReturn(Optional.of(targetUser));
+        when(redirectAttributes.addFlashAttribute(anyString(), anyString())).thenReturn(redirectAttributes);
+
+        // Act
+        String viewName = webController.submitFeedback(session, 1L, 2L, "INTERMEDIO", "Good game", redirectAttributes);
+
+        // Assert
+        assertThat(viewName).isEqualTo("redirect:/matches/1/feedback");
+        verify(feedbackService).createFeedback(eq(testUser), eq(targetUser), eq(testMatch), eq(Level.INTERMEDIO), eq("Good game"));
+        verify(redirectAttributes).addFlashAttribute(eq("success"), anyString());
+    }
+
+    // ==================== FILTERS & SORTING ====================
+
+    @Test
+    @DisplayName("home - should filter by level")
+    void home_shouldFilterByLevel() {
+        // Arrange
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchesByLevel(Level.INTERMEDIO)).thenReturn(Arrays.asList(testMatch));
+        when(matchService.sortMatches(any(), any())).thenReturn(Arrays.asList(testMatch));
+        when(model.addAttribute(anyString(), any())).thenReturn(model);
+
+        // Act
+        webController.home(session, "INTERMEDIO", "date", model);
+
+        // Assert
+        verify(matchService).getMatchesByLevel(Level.INTERMEDIO);
+    }
+
+    @Test
+    @DisplayName("matches - should filter by level")
+    void matches_shouldFilterByLevel() {
+        // Arrange
+        when(userSessionService.getCurrentUser(session)).thenReturn(testUser);
+        when(matchService.getMatchesByLevel(Level.AVANZATO)).thenReturn(Collections.emptyList());
+        when(matchService.sortMatches(any(), any())).thenReturn(Collections.emptyList());
+        when(model.addAttribute(anyString(), any())).thenReturn(model);
+
+        // Act
+        webController.matches(session, "AVANZATO", "popularity", model);
+
+        // Assert
+        verify(matchService).getMatchesByLevel(Level.AVANZATO);
+        verify(matchService).sortMatches(any(), eq("popularity"));
+    }
+
 }
