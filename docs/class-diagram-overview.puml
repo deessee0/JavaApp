@@ -1,0 +1,145 @@
+@startuml Class Diagram - Overview Packages
+
+title Sistema Gestione Partite Padel - Vista Architetturale Packages
+
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor<<Model>> LightCyan
+  BackgroundColor<<Service>> LightYellow
+  BackgroundColor<<Repository>> LightGreen
+  BackgroundColor<<Controller>> LightBlue
+  BackgroundColor<<Pattern>> LightPink
+  BackgroundColor<<Config>> Wheat
+}
+
+' ========== PACKAGES PRINCIPALI ==========
+
+package "com.example.padel_app.model" <<Model>> {
+  [Entità di Dominio]
+  note right
+    - User
+    - Match
+    - Registration
+    - Feedback
+    - Enum (Level, MatchStatus, etc.)
+  end note
+}
+
+package "com.example.padel_app.repository" <<Repository>> {
+  [Data Access Layer]
+  note right
+    - UserRepository
+    - MatchRepository
+    - RegistrationRepository
+    - FeedbackRepository
+    Estendono JpaRepository
+  end note
+}
+
+package "com.example.padel_app.service" <<Service>> {
+  [Business Logic Layer]
+  note right
+    - MatchService
+    - RegistrationService
+    - FeedbackService
+    - UserService
+    - UserSessionService
+    - NotificationService
+  end note
+}
+
+package "com.example.padel_app.controller" <<Controller>> {
+  [Presentation Layer]
+  note right
+    - WebController
+    - AuthController
+    Gestiscono richieste HTTP
+    e rendering Thymeleaf
+  end note
+}
+
+package "com.example.padel_app.strategy" <<Pattern>> {
+  [Strategy Pattern]
+  note right
+    - MatchSortingStrategy (interface)
+    - DateSortingStrategy
+    - PopularitySortingStrategy
+    - LevelSortingStrategy
+  end note
+}
+
+package "com.example.padel_app.event" <<Pattern>> {
+  [Observer Pattern - Events]
+  note right
+    - MatchConfirmedEvent
+    - MatchFinishedEvent
+  end note
+}
+
+package "com.example.padel_app.listener" <<Pattern>> {
+  [Observer Pattern - Listeners]
+  note right
+    - MatchEventListener
+    Reagisce agli eventi pubblicati
+  end note
+}
+
+package "com.example.padel_app.config" <<Config>> {
+  [Configuration Layer]
+  note right
+    - SecurityConfig
+    - BCryptPasswordEncoder bean
+  end note
+}
+
+' ========== RELAZIONI TRA PACKAGES ==========
+
+[Presentation Layer] --> [Business Logic Layer] : usa
+[Business Logic Layer] --> [Data Access Layer] : usa
+[Data Access Layer] --> [Entità di Dominio] : persiste
+
+[Business Logic Layer] --> [Entità di Dominio] : manipola
+[Presentation Layer] --> [Entità di Dominio] : visualizza
+
+[Business Logic Layer] ..> [Strategy Pattern] : <<usa>>
+[Business Logic Layer] ..> [Observer Pattern - Events] : <<pubblica>>
+[Observer Pattern - Listeners] ..> [Observer Pattern - Events] : <<ascolta>>
+[Observer Pattern - Listeners] --> [Business Logic Layer] : notifica
+
+[Presentation Layer] --> [Configuration Layer] : usa BCrypt
+[Configuration Layer] ..> [Configuration Layer] : <<crea bean>>
+
+' ========== NOTE ARCHITETTURALI ==========
+
+note as N1
+  **ARCHITETTURA LAYERED (MVC)**
+
+  Controller Layer (View + Controller)
+    ↓
+  Service Layer (Business Logic)
+    ↓
+  Repository Layer (Data Access)
+    ↓
+  Model Layer (Domain Entities)
+
+  Pattern utilizzati:
+  • MVC (Model-View-Controller)
+  • Strategy (ordinamento partite)
+  • Observer (eventi partita)
+  • Singleton (NotificationService)
+  • Repository (accesso dati)
+end note
+
+note as N2
+  **DIPENDENZE E FLUSSO DATI**
+
+  1. Controller riceve richiesta HTTP
+  2. Delega logica business a Service
+  3. Service coordina Repository
+  4. Repository accede al database
+  5. Service può pubblicare eventi
+  6. Listener reagiscono agli eventi
+  7. Controller renderizza risposta
+end note
+
+@enduml

@@ -1,0 +1,234 @@
+@startuml Class Diagram - Model Layer
+
+title Sistema Gestione Partite Padel - Model Layer (Domain Entities)
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<Entity>> White
+  BackgroundColor<<Enum>> LightYellow
+  BorderColor<<Entity>> Black
+  BorderColor<<Enum>> DarkGoldenRod
+}
+
+package "com.example.padel_app.model" {
+
+  ' ========== ENTITÀ PRINCIPALI ==========
+
+  class User <<Entity>> {
+    - id: Long {PK}
+    - username: String {unique}
+    - email: String {unique}
+    - firstName: String
+    - lastName: String
+    - password: String
+    - declaredLevel: Level
+    - perceivedLevel: Level
+    - matchesPlayed: int
+    - createdMatches: List<Match>
+    - registrations: List<Registration>
+    __
+    + getFullName(): String
+    + updateMatchesCount(): void
+  }
+
+  class Match <<Entity>> {
+    - id: Long {PK}
+    - location: String
+    - dateTime: LocalDateTime
+    - description: String
+    - requiredLevel: Level
+    - type: MatchType
+    - status: MatchStatus
+    - creator: User {FK}
+    - registrations: List<Registration>
+    - feedbacks: List<Feedback>
+    __
+    + getActiveRegistrationsCount(): int
+    + isFull(): boolean
+    + isWaiting(): boolean
+    + isConfirmed(): boolean
+    + isFinished(): boolean
+  }
+
+  class Registration <<Entity>> {
+    - id: Long {PK}
+    - user: User {FK}
+    - match: Match {FK}
+    - status: RegistrationStatus
+    - registeredAt: LocalDateTime
+    __
+    + isActive(): boolean
+    + cancel(): void
+  }
+
+  class Feedback <<Entity>> {
+    - id: Long {PK}
+    - author: User {FK}
+    - targetUser: User {FK}
+    - match: Match {FK}
+    - suggestedLevel: Level
+    - comment: String
+    - createdAt: LocalDateTime
+    __
+    {unique: author_id + target_user_id + match_id}
+  }
+
+  ' ========== ENUMERAZIONI ==========
+
+  enum Level <<Enum>> {
+    PRINCIPIANTE
+    INTERMEDIO
+    AVANZATO
+    PROFESSIONISTA
+  }
+
+  enum MatchType <<Enum>> {
+    PROPOSTA
+    FISSA
+  }
+
+  enum MatchStatus <<Enum>> {
+    WAITING
+    CONFIRMED
+    FINISHED
+    CANCELLED
+  }
+
+  enum RegistrationStatus <<Enum>> {
+    JOINED
+    CANCELLED
+  }
+}
+
+' ========== RELAZIONI TRA ENTITÀ ==========
+
+' User relationships
+User "1" -- "0..*" Match : creates >
+User "1" -- "0..*" Registration : has >
+User "1" -- "0..*" Feedback : writes >
+User "1" -- "0..*" Feedback : receives >
+
+' Match relationships
+Match "1" *-- "0..4" Registration : contains >
+Match "1" -- "0..*" Feedback : has >
+Match "*" -- "1" User : created by
+
+' Registration relationships
+Registration "*" -- "1" User : belongs to
+Registration "*" -- "1" Match : registers for
+
+' Feedback relationships
+Feedback "*" -- "1" User : author
+Feedback "*" -- "1" User : target
+Feedback "*" -- "1" Match : about
+
+' Enum relationships
+User --> Level : declaredLevel
+User --> Level : perceivedLevel
+Match --> Level : requiredLevel
+Match --> MatchType : type
+Match --> MatchStatus : status
+Registration --> RegistrationStatus : status
+Feedback --> Level : suggestedLevel
+
+' ========== NOTE ESPLICATIVE ==========
+
+note top of User
+  **USER (Giocatore)**
+
+  Rappresenta un giocatore di padel.
+
+  • declaredLevel: livello auto-dichiarato
+  • perceivedLevel: livello calcolato da feedback
+  • matchesPlayed: contatore partite giocate
+
+  Annotazioni JPA:
+  @Entity
+  @Table(name = "users")
+  unique constraint su username e email
+end note
+
+note top of Match
+  **MATCH (Partita)**
+
+  Rappresenta una partita di padel.
+
+  Business Rules:
+  • Max 4 giocatori
+  • Auto-conferma al 4° giocatore
+  • Solo creator può eliminare
+
+  Transizioni di stato:
+  WAITING → CONFIRMED → FINISHED
+
+  Annotazioni JPA:
+  @Entity
+  @ManyToOne con User (creator)
+  @OneToMany con Registration
+end note
+
+note right of Registration
+  **REGISTRATION (Iscrizione)**
+
+  Tabella associativa per relazione N:M
+  tra User e Match.
+
+  • Status JOINED: iscrizione attiva
+  • Status CANCELLED: iscrizione annullata
+
+  Vincoli:
+  unique constraint su (user_id, match_id)
+
+  Riutilizza record CANCELLED per
+  evitare duplicati
+end note
+
+note bottom of Feedback
+  **FEEDBACK (Valutazione)**
+
+  Valutazione post-partita tra giocatori.
+
+  Vincoli:
+  • Un feedback per coppia (author, target, match)
+  • unique constraint a 3 campi
+
+  Utilizzato per calcolare
+  il perceivedLevel del target user
+
+  Formula: media aritmetica dei
+  suggestedLevel ricevuti
+end note
+
+note right of Level
+  **ENUMERAZIONI**
+
+  Definiscono i valori possibili
+  per diversi attributi:
+
+  • Level: 4 livelli di abilità
+  • MatchType: PROPOSTA vs FISSA
+  • MatchStatus: ciclo vita partita
+  • RegistrationStatus: stato iscrizione
+
+  Mappate come VARCHAR in DB
+  con @Enumerated(EnumType.STRING)
+end note
+
+' ========== ANNOTAZIONI CARDINALITÀ ==========
+
+note as N1
+  **CARDINALITÀ RELAZIONI**
+
+  User → Match (created): 1:N
+  User ↔ Match (via Registration): N:M
+  User → Feedback (author): 1:N
+  User → Feedback (target): 1:N
+  Match → Registration: 1:N (max 4)
+  Match → Feedback: 1:N
+
+  Tutte le relazioni implementate
+  con chiavi esterne (FK) e vincoli
+  referenziali.
+end note
+
+@enduml
