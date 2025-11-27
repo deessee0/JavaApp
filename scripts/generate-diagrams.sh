@@ -35,7 +35,7 @@ docker run --rm \
     -e PLANTUML_LIMIT_SIZE=16384 \
     -v "$DOCS_DIR":/data \
     plantuml/plantuml \
-    -tpng -o images \
+    -tjpg -o images \
     "*.puml"
 
 if [ $? -eq 0 ]; then
