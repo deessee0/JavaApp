@@ -77,7 +77,8 @@ run_docker_tests() {
     # Build fino al target 'test'
     # --progress=plain mostra l'output dei test in console
     # Usiamo tee per mostrare l'output E salvarlo su file per il parsing
-    # Aggiungiamo --no-cache per forzare l'esecuzione dei test e vedere l'output
+    # DOCKER_BUILDKIT=1 abilita BuildKit e la cache mount per dipendenze Maven
+    # NON usiamo --no-cache per permettere il caching delle dipendenze Maven
     set +e # Disabilita exit on error temporaneamente per catturare fallimenti test
     DOCKER_BUILDKIT=1 docker build --target test -t padel-test-image --progress=plain . 2>&1 | tee "$TEST_OUTPUT_FILE"
     EXIT_CODE=${PIPESTATUS[0]}
