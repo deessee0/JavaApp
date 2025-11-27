@@ -1,0 +1,634 @@
+\documentclass[12pt,a4paper]{article}
+
+% ========== PACKAGES ==========
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+
+% ========== CONFIGURAZIONI ==========
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Documentazione App Padel},
+    pdfpagemode=FullScreen,
+}
+
+% Listings setup per codice Java
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java
+}
+
+\lstset{style=javastyle}
+
+% Headers e footers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{App Padel - Documentazione}
+\fancyfoot[C]{\thepage}
+
+% ========== FRONTESPIZIO ==========
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\huge\bfseries Sistema di Gestione Partite Padel\par}
+    \vspace{0.5cm}
+    {\Large\bfseries App Padel\par}
+    \vspace{2cm}
+
+    {\Large\textbf{Documentazione Progetto}\par}
+    {\Large Ingegneria del Software\par}
+    \vspace{3cm}
+
+    \begin{tabular}{rl}
+        \textbf{Studente:} & [Nome Cognome] \\
+        \textbf{Matricola:} & [Numero Matricola] \\
+        \textbf{Codice Persona:} & [Codice Persona] \\
+        \textbf{Email:} & [email@studenti.polimi.it] \\
+        \\
+        \textbf{Corso:} & Ingegneria del Software \\
+        \textbf{Anno Accademico:} & 2024/2025 \\
+        \textbf{Docente:} & Prof. Mattia Salnitri \\
+    \end{tabular}
+
+    \vspace{2cm}
+
+    \begin{tabular}{rl}
+        \textbf{Repository GitHub:} & \href{https://github.com/deessee0/JavaApp}{github.com/deessee0/JavaApp} \\
+    \end{tabular}
+
+    \vfill
+
+    {\large \today\par}
+\end{titlepage}
+
+% ========== INDICE ==========
+\tableofcontents
+\newpage
+
+% ========== LISTA FIGURE ==========
+\listoffigures
+\newpage
+
+% ========== CAPITOLO 1: INTRODUZIONE ==========
+\section{Introduzione}
+
+\subsection{Scopo del Documento}
+Questo documento fornisce la documentazione del progetto \textbf{App Padel}, sviluppato come elaborato per il corso di Ingegneria del Software. Il sistema implementa una piattaforma web per la gestione di partite di padel tra giocatori, dimostrando l'applicazione pratica dei principi di ingegneria del software, design patterns e best practices di sviluppo.
+
+\subsection{Ambito del Progetto}
+
+\textbf{App Padel} offre una piattaforma che permette a giocatori di:
+\begin{itemize}[leftmargin=*]
+    \item Creare partite indicando luogo, data/ora e livello richiesto
+    \item Iscriversi a partite esistenti compatibili con il proprio livello
+    \item Ricevere conferma automatica quando la partita raggiunge 4 giocatori (2vs2)
+    \item Fornire feedback post-partita per valutare il livello degli altri giocatori
+    \item Visualizzare statistiche personali e livello percepito dalla community
+\end{itemize}
+
+\subsection{Obiettivi del Progetto}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Architetturali}: Implementare un'architettura MVC ben strutturata seguendo i principi SOLID
+
+    \item \textbf{Design Patterns}: Applicare e documentare 3 design patterns:
+    \begin{itemize}
+        \item \textit{Observer Pattern}: gestione eventi di conferma e termine partite
+        \item \textit{Strategy Pattern}: algoritmi di ordinamento partite intercambiabili
+        \item \textit{Singleton Pattern}: servizio notifiche centralizzato
+    \end{itemize}
+
+    \item \textbf{Qualità del Codice}: Code coverage $\geq$ 80\% con test di unità
+
+    \item \textbf{Persistenza}: JPA/Hibernate per gestione dati con relazioni complesse
+
+    \item \textbf{User Experience}: Interfaccia web intuitiva e responsive (Thymeleaf, HTML5, CSS3)
+\end{enumerate}
+
+\newpage
+
+% ========== CAPITOLO 2: REQUISITI ==========
+\section{Analisi dei Requisiti}
+
+\subsection{Requisiti Funzionali}
+
+\subsubsection{Gestione Utenti}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RF1.1 - Registrazione}: L'utente può registrarsi fornendo username, email, password e livello dichiarato (Principiante, Intermedio, Avanzato, Professionista)
+
+    \item \textbf{RF1.2 - Visualizzazione Profilo}: Consultazione dati personali, livello dichiarato, livello percepito, numero partite giocate
+
+    \item \textbf{RF1.3 - Calcolo Livello Percepito}: Il sistema calcola automaticamente il livello percepito come media dei feedback ricevuti
+\end{itemize}
+
+\subsubsection{Gestione Partite}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RF2.1 - Creazione Partita}: Creazione partita specificando luogo, data/ora, livello minimo, descrizione e tipologia (FIXED/PROPOSED)
+
+    \item \textbf{RF2.2 - Iscrizione}: Iscrizione a partita se ci sono posti disponibili ($<$ 4 giocatori) e il livello è compatibile
+
+    \item \textbf{RF2.3 - Abbandono}: Disiscrizione da partita non ancora confermata
+
+    \item \textbf{RF2.4 - Conferma Automatica}: Quando raggiunge 4 iscritti, la partita viene confermata automaticamente (Observer Pattern)
+
+    \item \textbf{RF2.5 - Filtro e Ordinamento}: Filtro per status/livello e ordinamento con algoritmi intercambiabili (Strategy Pattern)
+\end{itemize}
+
+\subsubsection{Sistema Feedback}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RF3.1 - Inserimento Feedback}: Dopo partita completata, ogni giocatore può valutare il livello degli altri 3 partecipanti
+
+    \item \textbf{RF3.2 - Vincolo Unicità}: Un solo feedback per coppia (autore, target, partita)
+
+    \item \textbf{RF3.3 - Aggiornamento Livello}: Ricalcolo automatico del livello percepito
+\end{itemize}
+
+\subsection{Requisiti Non Funzionali}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RNF1 - Architettura}: Pattern MVC con separazione netta tra Model, View, Controller, Service e Repository
+
+    \item \textbf{RNF2 - Tecnologie}: Java 17, Spring Boot 3.5.5, JPA/Hibernate, H2/MySQL, Thymeleaf
+
+    \item \textbf{RNF3 - Testing}: Code coverage $\geq$ 80\%, JUnit 5, Mockito, JaCoCo
+
+    \item \textbf{RNF4 - Performance}: Gestione N+1 queries con JOIN FETCH, transazioni ottimizzate
+
+    \item \textbf{RNF5 - Sicurezza}: Password hashate con BCrypt, validazione input, protezione SQL injection
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 3: PROGETTAZIONE ==========
+\section{Progettazione del Sistema}
+
+\subsection{Architettura Generale}
+
+L'applicazione segue un'architettura \textbf{Model-View-Controller (MVC)} stratificata:
+
+\begin{enumerate}
+    \item \textbf{Presentation Layer (View)}: Template Thymeleaf in \texttt{src/main/resources/templates}
+
+    \item \textbf{Controller Layer}: WebController e AuthController in \texttt{com.example.padel\_app.controller}
+
+    \item \textbf{Service Layer}: Business logic in \texttt{com.example.padel\_app.service}
+
+    \item \textbf{Repository Layer}: Data access in \texttt{com.example.padel\_app.repository}
+
+    \item \textbf{Model Layer}: Entità JPA in \texttt{com.example.padel\_app.model}
+\end{enumerate}
+
+\textbf{Flusso delle Richieste:}
+\begin{enumerate}
+    \item Utente interagisce con interfaccia web (View)
+    \item Controller intercetta richiesta HTTP
+    \item Service implementa business logic
+    \item Repository esegue query JPA
+    \item Dati ritornano attraverso i layer fino alla View
+\end{enumerate}
+
+\subsection{Diagrammi UML}
+
+\subsubsection{Use Case Diagram}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/Use Case Diagram - App Padel.png}
+    \caption{Use Case Diagram - Sistema Gestione Partite Padel}
+    \label{fig:usecase}
+\end{figure}
+
+Il diagramma identifica due attori principali:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Giocatore}: Utente registrato che gestisce partite e feedback
+    \item \textbf{Sistema}: Componente automatica per conferme, notifiche e calcolo livelli
+\end{itemize}
+
+\textbf{Casi d'uso principali:}
+\begin{itemize}[leftmargin=*]
+    \item Login/Logout, Registrazione
+    \item Creazione, Join, Abbandono Partita
+    \item Conferma Automatica (Observer Pattern)
+    \item Ordinamento Partite (Strategy Pattern)
+    \item Gestione Feedback
+    \item Notifiche Sistema (Singleton Pattern)
+\end{itemize}
+
+\newpage
+
+\subsubsection{Class Diagram}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Class Diagram - App Padel (Completo).png}
+    \caption{Class Diagram - Architettura Completa}
+    \label{fig:classdiagram}
+\end{figure}
+
+\textbf{Entità Principali:}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{User}: username, email, password, declaredLevel, perceivedLevel, matchesPlayed
+
+    \item \textbf{Match}: location, dateTime, requiredLevel, type, status, description
+
+    \item \textbf{Registration}: Entità di join User-Match con status (JOINED/CANCELLED)
+
+    \item \textbf{Feedback}: author, targetUser, match, suggestedLevel, comment
+\end{itemize}
+
+\textbf{Relazioni JPA:}
+\begin{itemize}
+    \item User $\leftrightarrow$ Match: Many-to-Many via Registration
+    \item User $\rightarrow$ Feedback: OneToMany (given/received)
+    \item Match $\rightarrow$ Feedback: OneToMany
+\end{itemize}
+
+\newpage
+
+\subsubsection{Sequence Diagram - Join e Conferma Automatica}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Observer Pattern - Sequence Diagram.png}
+    \caption{Sequence Diagram - Join Partita con Conferma Automatica (Observer Pattern)}
+    \label{fig:sequence_observer}
+\end{figure}
+
+\textbf{Flusso (Observer Pattern):}
+\begin{enumerate}
+    \item Giocatore 4 fa POST /matches/\{id\}/join
+    \item WebController $\rightarrow$ MatchService.joinMatch()
+    \item MatchService crea Registration tramite RegistrationService
+    \item Se count=4: MatchService pubblica MatchConfirmedEvent
+    \item MatchEventListener riceve evento
+    \item Listener chiama NotificationService (Singleton)
+    \item Notifica inviata ai 4 giocatori
+\end{enumerate}
+
+\textbf{Vantaggi:}
+\begin{itemize}
+    \item Disaccoppiamento: MatchService non conosce MatchEventListener
+    \item Estendibilità: facile aggiungere nuovi listener (email, SMS)
+    \item Open/Closed Principle rispettato
+\end{itemize}
+
+\newpage
+
+\subsubsection{Sequence Diagram - Strategy Pattern}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Strategy Pattern - Sequence Diagram.png}
+    \caption{Sequence Diagram - Strategy Pattern per Ordinamento}
+    \label{fig:sequence_strategy}
+\end{figure}
+
+\textbf{Flusso (Strategy Pattern):}
+\begin{enumerate}
+    \item User fa GET /matches?sort=date
+    \item WebController $\rightarrow$ MatchService.getMatchesSorted("date")
+    \item MatchService recupera lista partite da Repository
+    \item MatchService seleziona strategia: strategies.get("date")
+    \item DateSortingStrategy.sort(matches) applica algoritmo
+    \item Lista ordinata ritorna al Controller
+\end{enumerate}
+
+\textbf{Strategie Disponibili:}
+\begin{itemize}
+    \item \textbf{DateSortingStrategy}: Ordina per dateTime ASC
+    \item \textbf{PopularitySortingStrategy}: Ordina per numero iscritti DESC
+    \item \textbf{LevelSortingStrategy}: Ordina per requiredLevel ASC
+\end{itemize}
+
+\textbf{Vantaggi:}
+\begin{itemize}
+    \item Algoritmi intercambiabili a runtime
+    \item Nuove strategie senza modificare MatchService
+    \item Eliminazione codice condizionale (if-else)
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 4: DESIGN PATTERNS ==========
+\section{Design Patterns Implementati}
+
+\subsection{Observer Pattern}
+
+\textbf{Scopo:} Notificare componenti interessati quando cambiano stati delle partite.
+
+\textbf{Componenti:}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Publisher}: MatchService (pubblica eventi)
+    \item \textbf{Events}: MatchConfirmedEvent, MatchFinishedEvent
+    \item \textbf{Observer}: MatchEventListener (ascolta eventi)
+    \item \textbf{Action}: Chiama NotificationService (Singleton)
+\end{itemize}
+
+\textbf{Implementazione:}
+\begin{lstlisting}
+// Publisher
+@Service
+public class MatchService {
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    public void joinMatch(Long matchId, Long userId) {
+        // ... logica join ...
+        if (match.getActiveRegistrationsCount() == 4) {
+            match.setStatus(MatchStatus.CONFIRMED);
+            eventPublisher.publishEvent(
+                new MatchConfirmedEvent(this, match)
+            );
+        }
+    }
+}
+
+// Observer
+@Component
+public class MatchEventListener {
+    @Autowired
+    private NotificationService notificationService;
+
+    @EventListener
+    public void handleMatchConfirmed(MatchConfirmedEvent event) {
+        notificationService.sendMatchConfirmedNotification(
+            event.getMatch()
+        );
+    }
+}
+\end{lstlisting}
+
+\textbf{Benefit:}
+\begin{itemize}
+    \item Disaccoppiamento tra publisher e observer
+    \item Facile aggiungere nuovi listener senza modificare MatchService
+    \item Rispetta Open/Closed Principle
+\end{itemize}
+
+\subsection{Strategy Pattern}
+
+\textbf{Scopo:} Fornire algoritmi di ordinamento intercambiabili a runtime.
+
+\textbf{Componenti:}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Strategy Interface}: MatchSortingStrategy
+    \item \textbf{Concrete Strategies}: DateSortingStrategy, PopularitySortingStrategy, LevelSortingStrategy
+    \item \textbf{Context}: MatchService
+\end{itemize}
+
+\textbf{Implementazione:}
+\begin{lstlisting}
+// Strategy Interface
+public interface MatchSortingStrategy {
+    List<Match> sort(List<Match> matches);
+}
+
+// Concrete Strategy
+@Component("dateSorting")
+public class DateSortingStrategy implements MatchSortingStrategy {
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(Match::getDateTime))
+            .collect(Collectors.toList());
+    }
+}
+
+// Context
+@Service
+public class MatchService {
+    @Autowired
+    private Map<String, MatchSortingStrategy> strategies;
+
+    public List<Match> getMatchesSorted(String sortBy) {
+        MatchSortingStrategy strategy = strategies.get(sortBy);
+        return strategy.sort(matchRepository.findAll());
+    }
+}
+\end{lstlisting}
+
+\textbf{Benefit:}
+\begin{itemize}
+    \item Algoritmi intercambiabili senza modificare client
+    \item Nuove strategie facilmente aggiungibili
+    \item Eliminazione codice condizionale
+\end{itemize}
+
+\subsection{Singleton Pattern}
+
+\textbf{Scopo:} Garantire un'unica istanza di NotificationService per tutta l'applicazione.
+
+\textbf{Implementazione:}
+\begin{lstlisting}
+@Service // Default scope = singleton
+public class NotificationService {
+    private final List<String> notifications = new ArrayList<>();
+
+    public void sendMatchConfirmedNotification(Match match) {
+        String message = String.format(
+            "Partita CONFERMATA! %s - 4 giocatori pronti",
+            match.getLocation()
+        );
+        notifications.add(message);
+        log.info(message);
+    }
+
+    public List<String> getAllNotifications() {
+        return notifications;
+    }
+}
+\end{lstlisting}
+
+\textbf{Benefit:}
+\begin{itemize}
+    \item Stato centralizzato per tutte le notifiche
+    \item Efficienza memoria (una sola istanza)
+    \item Facile monitoring e debug
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 5: IMPLEMENTAZIONE ==========
+\section{Implementazione}
+
+\subsection{Stack Tecnologico}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{4cm}|p{8cm}|}
+\hline
+\textbf{Componente} & \textbf{Tecnologia/Versione} \\
+\hline
+Linguaggio & Java 17 (LTS) \\
+\hline
+Framework & Spring Boot 3.5.5 \\
+\hline
+Persistenza & Spring Data JPA + Hibernate 6.6.26 \\
+\hline
+Database & H2 (development), MySQL/PostgreSQL (production) \\
+\hline
+Template Engine & Thymeleaf 3.x \\
+\hline
+Build Tool & Maven 3.9.x \\
+\hline
+Testing & JUnit 5, Mockito, JaCoCo \\
+\hline
+Security & BCrypt Password Encoder \\
+\hline
+\end{tabular}
+\caption{Stack Tecnologico Completo}
+\end{table}
+
+\subsection{Autenticazione Session-Based}
+
+Il sistema implementa autenticazione con \textbf{UserSessionService}:
+
+\begin{itemize}[leftmargin=*]
+    \item Password hashate con BCrypt (salt automatico)
+    \item Sessione HTTP persistente tra richieste
+    \item Auto-upgrade password legacy a BCrypt
+    \item Protezione SQL injection via JPA prepared statements
+    \item Validazione input con Jakarta Bean Validation
+\end{itemize}
+
+\subsection{Gestione Performance}
+
+\textbf{Prevenzione N+1 Queries:}
+\begin{lstlisting}
+@Query("SELECT m FROM Match m LEFT JOIN FETCH m.registrations")
+List<Match> findAllWithRegistrations();
+\end{lstlisting}
+
+\textbf{Transazionalità:}
+\begin{itemize}
+    \item @Transactional su metodi service
+    \item readOnly=true per query SELECT (ottimizzazione)
+    \item Rollback automatico su exception
+    \item Isolation level: READ\_COMMITTED
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 6: TESTING ==========
+\section{Testing}
+
+\subsection{Strategia di Testing}
+
+\textbf{Obiettivo:} Code coverage $\geq$ 80\% con test significativi.
+
+\textbf{Tipologie Test:}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Unit Test}: Service layer con mock Repository (Mockito)
+    \item \textbf{Integration Test}: Repository con database H2 in-memory
+    \item \textbf{Controller Test}: WebMvcTest per endpoint HTTP
+\end{itemize}
+
+\subsection{Code Coverage}
+
+Generazione report con JaCoCo:
+\begin{lstlisting}[language=bash]
+mvn clean test jacoco:report
+\end{lstlisting}
+
+Report disponibile in: \texttt{target/site/jacoco/index.html}
+
+\textbf{Metriche:}
+\begin{itemize}
+    \item Line coverage: $\geq$ 80\%
+    \item Branch coverage: $\geq$ 70\%
+    \item Method coverage: $\geq$ 85\%
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 7: CONCLUSIONI ==========
+\section{Conclusioni}
+
+\subsection{Risultati Raggiunti}
+
+Il progetto \textbf{App Padel} ha dimostrato con successo:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Architettura MVC} ben strutturata con separazione netta tra layer
+    \item \textbf{Design Patterns} applicati correttamente (Observer, Strategy, Singleton)
+    \item \textbf{Principi SOLID} rispettati per manutenibilità ed estendibilità
+    \item \textbf{Code coverage} elevata con test significativi
+    \item \textbf{Persistenza JPA} con relazioni complesse gestite correttamente
+    \item \textbf{Sicurezza} implementata (BCrypt, validazione input, protezione SQL injection)
+\end{itemize}
+
+\subsection{Lezioni Apprese}
+
+\begin{itemize}[leftmargin=*]
+    \item Importanza della separazione delle responsabilità per testabilità
+    \item Design patterns facilitano estendibilità senza modificare codice esistente
+    \item Dependency injection di Spring semplifica testing e manutenzione
+    \item Gestione attenta delle relazioni JPA previene problemi performance
+\end{itemize}
+
+\subsection{Sviluppi Futuri}
+
+\textbf{Possibili estensioni:}
+\begin{itemize}[leftmargin=*]
+    \item Invio email/SMS per notifiche (nuovo listener Observer)
+    \item Geolocalizzazione per ordinamento per distanza (nuova Strategy)
+    \item Sistema messaggistica tra giocatori
+    \item Integrazione calendario (Google Calendar, iCal)
+    \item App mobile (REST API già predisposta)
+    \item Sistema reputation avanzato con algoritmi ML
+\end{itemize}
+
+Tutte queste estensioni sono facilititate dall'architettura modulare e dai pattern implementati.
+
+\vspace{2cm}
+
+\begin{center}
+\textbf{--- Fine Documento ---}
+\end{center}
+
+\end{document}
