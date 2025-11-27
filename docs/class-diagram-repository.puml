@@ -1,0 +1,276 @@
+@startuml Class Diagram - Repository Layer
+
+title Sistema Gestione Partite Padel - Repository Layer (Data Access)
+
+skinparam classAttributeIconSize 0
+skinparam interface {
+  BackgroundColor LightGreen
+  BorderColor DarkGreen
+}
+skinparam class {
+  BackgroundColor<<JPA>> LightCyan
+  BorderColor Black
+}
+
+package "com.example.padel_app.repository" {
+
+  ' ========== REPOSITORY INTERFACES ==========
+
+  interface UserRepository {
+    **JpaRepository Methods (inherited):**
+    + save(user: User): User
+    + findById(id: Long): Optional<User>
+    + findAll(): List<User>
+    + delete(user: User): void
+    + deleteById(id: Long): void
+    __
+    **Custom Query Methods:**
+    + findByUsername(username: String): Optional<User>
+    + findByEmail(email: String): Optional<User>
+  }
+
+  interface MatchRepository {
+    **JpaRepository Methods (inherited):**
+    + save(match: Match): Match
+    + findById(id: Long): Optional<Match>
+    + findAll(): List<Match>
+    + delete(match: Match): void
+    + deleteById(id: Long): void
+    __
+    **Query by Filters:**
+    + findByStatus(status: MatchStatus): List<Match>
+    + findByType(type: MatchType): List<Match>
+    + findByRequiredLevel(level: Level): List<Match>
+    + findByDateTimeBefore(dateTime: LocalDateTime): List<Match>
+    + findByStatusAndDateTimeAfter(status: MatchStatus, \n    dateTime: LocalDateTime): List<Match>
+    + findByRequiredLevelAndStatus(level: Level, \n    status: MatchStatus): List<Match>
+    __
+    **Sorting Queries:**
+    + findAllOrderByDate(): List<Match> {@Query}
+    + findAllOrderByPopularity(): List<Match> {@Query}
+    + findAllOrderByLevel(): List<Match> {@Query}
+    __
+    **Optimized Queries (JOIN FETCH):**
+    + findAllWithCreator(): List<Match> {@Query}
+    + findByStatusWithCreator(status: MatchStatus): List<Match> {@Query}
+    + findByRequiredLevelWithCreator(level: Level): List<Match> {@Query}
+    + findAllOrderByDateWithCreator(): List<Match> {@Query}
+    + findAllOrderByPopularityWithCreator(): List<Match> {@Query}
+    + findAllOrderByLevelWithCreator(): List<Match> {@Query}
+  }
+
+  interface RegistrationRepository {
+    **JpaRepository Methods (inherited):**
+    + save(registration: Registration): Registration
+    + findById(id: Long): Optional<Registration>
+    + findAll(): List<Registration>
+    + delete(registration: Registration): void
+    __
+    **Query by Entity:**
+    + findByUser(user: User): List<Registration>
+    + findByMatch(match: Match): List<Registration>
+    + findByUserAndMatch(user: User, match: Match): Optional<Registration>
+    __
+    **Query by Status:**
+    + findByMatchAndStatus(match: Match, \n    status: RegistrationStatus): List<Registration>
+    + findByUserAndStatus(user: User, \n    status: RegistrationStatus): List<Registration>
+    + findByUserAndMatchAndStatus(user: User, match: Match, \n    status: RegistrationStatus): Optional<Registration>
+    __
+    **Count Queries:**
+    + countActiveRegistrationsByMatch(match: Match): int {@Query}
+    + countAllRegistrationsByMatch(match: Match): int {@Query}
+    + existsByUserAndMatchAndStatus(user: User, match: Match, \n    status: RegistrationStatus): boolean
+  }
+
+  interface FeedbackRepository {
+    **JpaRepository Methods (inherited):**
+    + save(feedback: Feedback): Feedback
+    + findById(id: Long): Optional<Feedback>
+    + findAll(): List<Feedback>
+    + delete(feedback: Feedback): void
+    __
+    **Query Methods:**
+    + findByAuthorAndTargetUserAndMatch(author: User, \n    targetUser: User, match: Match): Optional<Feedback>
+    + findByTargetUser(user: User): List<Feedback>
+    + findByAuthor(user: User): List<Feedback>
+    + findByMatch(match: Match): List<Feedback>
+    + findByAuthorAndMatch(author: User, match: Match): List<Feedback>
+  }
+
+  ' ========== SPRING DATA JPA ==========
+
+  interface "<<JPA>>\nJpaRepository<T, ID>" as JpaRepository <<JPA>> {
+    + save(entity: T): T
+    + saveAll(entities: Iterable<T>): List<T>
+    + findById(id: ID): Optional<T>
+    + existsById(id: ID): boolean
+    + findAll(): List<T>
+    + findAllById(ids: Iterable<ID>): List<T>
+    + count(): long
+    + deleteById(id: ID): void
+    + delete(entity: T): void
+    + deleteAll(): void
+  }
+
+  ' Relazioni ereditarietà
+  UserRepository --|> JpaRepository
+  MatchRepository --|> JpaRepository
+  RegistrationRepository --|> JpaRepository
+  FeedbackRepository --|> JpaRepository
+}
+
+' ========== RELAZIONI CON MODEL ==========
+
+package "com.example.padel_app.model" {
+  class User
+  class Match
+  class Registration
+  class Feedback
+}
+
+UserRepository ..> User : manages
+MatchRepository ..> Match : manages
+RegistrationRepository ..> Registration : manages
+FeedbackRepository ..> Feedback : manages
+
+' ========== NOTE ESPLICATIVE ==========
+
+note top of JpaRepository
+  **SPRING DATA JPA**
+
+  JpaRepository fornisce automaticamente:
+  • Operazioni CRUD complete
+  • Paginazione e sorting
+  • Batch operations
+  • Query derivation da nome metodo
+
+  Spring Data JPA genera automaticamente
+  l'implementazione a runtime tramite
+  proxy dinamici.
+
+  Non è necessario scrivere codice
+  di accesso al database!
+end note
+
+note right of MatchRepository
+  **MATCH REPOSITORY**
+
+  **Query Method Naming:**
+  Spring Data JPA genera query automaticamente
+  dal nome del metodo:
+
+  findByStatus → WHERE status = ?
+  findByRequiredLevel → WHERE requiredLevel = ?
+
+  **@Query Personalizzate:**
+  Per query complesse usiamo @Query:
+
+  ```java
+  @Query("SELECT DISTINCT m FROM Match m
+          LEFT JOIN FETCH m.creator
+          LEFT JOIN FETCH m.registrations
+          ORDER BY m.dateTime")
+  List<Match> findAllOrderByDateWithCreator();
+  ```
+
+  **JOIN FETCH:**
+  Evita N+1 problem caricando relazioni
+  lazy in una sola query.
+end note
+
+note bottom of RegistrationRepository
+  **REGISTRATION REPOSITORY**
+
+  **Gestione Unique Constraint:**
+
+  Unique constraint su (user_id, match_id)
+  impedisce iscrizioni duplicate.
+
+  Il servizio riutilizza registrazioni
+  CANCELLED invece di creare nuove:
+
+  1. Cerca registration esistente
+  2. Se CANCELLED → riattiva (status=JOINED)
+  3. Se non esiste → crea nuova
+
+  **Count Queries:**
+  Query custom per contare iscrizioni attive:
+
+  ```java
+  @Query("SELECT COUNT(r) FROM Registration r
+          WHERE r.match = :match
+          AND r.status = 'JOINED'")
+  int countActiveRegistrationsByMatch(
+      @Param("match") Match match);
+  ```
+end note
+
+note bottom of FeedbackRepository
+  **FEEDBACK REPOSITORY**
+
+  **Unique Constraint a 3 campi:**
+
+  Un feedback per tripla:
+  (author_id, target_user_id, match_id)
+
+  Implementato con:
+  @UniqueConstraint a livello entity
+
+  **Query per calcolo livello percepito:**
+
+  findByTargetUser() restituisce tutti
+  i feedback ricevuti da un utente.
+
+  FeedbackService calcola la media
+  dei suggestedLevel per aggiornare
+  il perceivedLevel.
+end note
+
+note as N1
+  **REPOSITORY PATTERN**
+
+  **Vantaggi:**
+  • Astrazione dell'accesso ai dati
+  • Isolamento logica persistenza
+  • Facilita testing (mock repositories)
+  • Supporto transazioni (@Transactional)
+  • Query type-safe
+
+  **Spring Data JPA Features:**
+  • Derived queries (da nome metodo)
+  • @Query JPQL/SQL custom
+  • Named queries
+  • Specifications (Criteria API)
+  • Auditing (@CreatedDate, @LastModifiedDate)
+  • Soft delete
+
+  **Ottimizzazioni:**
+  • JOIN FETCH per eager loading controllato
+  • @EntityGraph come alternativa
+  • Projection per DTO
+  • Native queries per performance critiche
+end note
+
+note as N2
+  **TRANSAZIONALITÀ**
+
+  I repository operano in contesto
+  transazionale gestito da:
+
+  @Transactional a livello Service
+
+  Propagazione:
+  • REQUIRED (default): usa tx esistente
+  • REQUIRES_NEW: nuova tx
+  • SUPPORTS: opzionale
+
+  Rollback:
+  • Automatico su RuntimeException
+  • Configurabile con rollbackFor
+
+  Isolamento:
+  • READ_COMMITTED (default H2)
+  • Configurabile per uso produzione
+end note
+
+@enduml

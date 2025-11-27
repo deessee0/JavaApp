@@ -1,0 +1,366 @@
+@startuml Class Diagram - Design Patterns
+
+title Sistema Gestione Partite Padel - Design Patterns Implementati
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<Strategy>> LightYellow
+  BackgroundColor<<Observer>> LightGreen
+  BackgroundColor<<Singleton>> LightBlue
+  BackgroundColor<<Context>> Wheat
+  BorderColor Black
+}
+
+' ========== STRATEGY PATTERN ==========
+
+package "Strategy Pattern - Ordinamento Partite" {
+
+  interface MatchSortingStrategy <<Strategy>> {
+    + {abstract} sort(matches: List<Match>): List<Match>
+  }
+
+  class DateSortingStrategy <<Strategy>> {
+    + sort(matches: List<Match>): List<Match>
+  }
+
+  class PopularitySortingStrategy <<Strategy>> {
+    + sort(matches: List<Match>): List<Match>
+  }
+
+  class LevelSortingStrategy <<Strategy>> {
+    + sort(matches: List<Match>): List<Match>
+  }
+
+  class MatchService <<Context>> {
+    - sortingStrategies: Map<String, MatchSortingStrategy>
+    __
+    + getMatchesOrderedBy(strategyName: String): List<Match>
+    + sortMatches(matches: List<Match>, \n    strategyName: String): List<Match>
+  }
+
+  ' Relazioni Strategy
+  DateSortingStrategy ..|> MatchSortingStrategy : <<implements>>
+  PopularitySortingStrategy ..|> MatchSortingStrategy : <<implements>>
+  LevelSortingStrategy ..|> MatchSortingStrategy : <<implements>>
+
+  MatchService "1" o-- "*" MatchSortingStrategy : usa >
+
+  note top of MatchSortingStrategy
+    **STRATEGY PATTERN**
+
+    **Problema:**
+    Necessità di ordinare le partite secondo
+    criteri diversi selezionabili a runtime.
+
+    **Soluzione:**
+    Interfaccia comune con algoritmi
+    intercambiabili.
+
+    **Vantaggi:**
+    • Algoritmi incapsulati in classi separate
+    • Facile aggiunta di nuove strategie
+    • Open/Closed Principle (SOLID)
+    • Selezione runtime dell'algoritmo
+    • Codice più testabile
+
+    **Implementazione:**
+    Spring autowire delle strategie con @Component
+    MatchService inietta Map<String, Strategy>
+  end note
+
+  note right of DateSortingStrategy
+    **DATE SORTING**
+
+    Ordina per data/ora crescente.
+
+    Logica:
+    matches.stream()
+      .sorted(Comparator.comparing(
+        Match::getDateTime))
+      .toList()
+
+    Usato per: mostrare prossime partite
+  end note
+
+  note right of PopularitySortingStrategy
+    **POPULARITY SORTING**
+
+    Ordina per numero iscritti (DESC).
+
+    Logica:
+    matches.stream()
+      .sorted(Comparator.comparing(
+        Match::getActiveRegistrationsCount)
+        .reversed())
+      .toList()
+
+    Usato per: vedere partite più popolari
+  end note
+
+  note right of LevelSortingStrategy
+    **LEVEL SORTING**
+
+    Ordina per livello richiesto (ASC).
+
+    Logica:
+    matches.stream()
+      .sorted(Comparator.comparing(
+        Match::getRequiredLevel))
+      .toList()
+
+    Usato per: filtrare per difficoltà
+  end note
+
+  note bottom of MatchService
+    **CONTEXT (Client del Pattern)**
+
+    MatchService usa le strategie:
+
+    ```java
+    @Autowired
+    private Map<String, MatchSortingStrategy>
+        sortingStrategies;
+
+    public List<Match> getMatchesOrderedBy(
+        String strategyName) {
+
+      MatchSortingStrategy strategy =
+        sortingStrategies.get(strategyName);
+
+      List<Match> matches = getAllMatches();
+      return strategy.sort(matches);
+    }
+    ```
+
+    Spring inietta automaticamente tutte
+    le implementazioni nella Map con
+    il bean name come chiave.
+  end note
+}
+
+' ========== OBSERVER PATTERN ==========
+
+package "Observer Pattern - Eventi Partita" <<Rectangle>> {
+
+  class MatchConfirmedEvent <<Observer>> {
+    - match: Match
+    - timestamp: LocalDateTime
+    __
+    + getMatch(): Match
+    + getTimestamp(): LocalDateTime
+  }
+
+  class MatchFinishedEvent <<Observer>> {
+    - match: Match
+    - timestamp: LocalDateTime
+    __
+    + getMatch(): Match
+    + getTimestamp(): LocalDateTime
+  }
+
+  class MatchService <<Context>> {
+    - eventPublisher: ApplicationEventPublisher
+    __
+    + checkAndConfirmMatch(match: Match): Match
+    + finishMatch(matchId: Long): Match
+  }
+
+  class MatchEventListener <<Observer>> {
+    - notificationService: NotificationService
+    __
+    + handleMatchConfirmed(event: MatchConfirmedEvent): void
+    + handleMatchFinished(event: MatchFinishedEvent): void
+  }
+
+  class NotificationService <<Singleton>> {
+    __
+    + sendMatchConfirmedNotification(match: Match): void
+    + sendMatchFinishedNotification(match: Match): void
+  }
+
+  ' Relazioni Observer
+  MatchService ..> MatchConfirmedEvent : <<publishes>>
+  MatchService ..> MatchFinishedEvent : <<publishes>>
+  MatchEventListener ..> MatchConfirmedEvent : <<listens>>
+  MatchEventListener ..> MatchFinishedEvent : <<listens>>
+  MatchEventListener --> NotificationService : uses >
+
+  note top of MatchConfirmedEvent
+    **OBSERVER PATTERN**
+
+    **Problema:**
+    Notificare componenti interessati quando
+    una partita cambia stato senza
+    accoppiamento diretto.
+
+    **Soluzione:**
+    Spring Event Mechanism
+    (implementazione Observer Pattern)
+
+    **Vantaggi:**
+    • Disaccoppiamento publisher/listener
+    • Facile aggiunta di nuovi listener
+    • Gestione asincrona (opzionale con @Async)
+    • Spring gestisce lifecycle
+
+    **Eventi:**
+    • MatchConfirmedEvent: 4 giocatori raggiunti
+    • MatchFinishedEvent: partita terminata
+  end note
+
+  note left of MatchService
+    **PUBLISHER (Subject)**
+
+    Pubblica eventi quando cambia
+    lo stato di una partita:
+
+    ```java
+    @Autowired
+    private ApplicationEventPublisher
+        eventPublisher;
+
+    public Match checkAndConfirmMatch(
+        Match match) {
+
+      if (match.getActiveRegistrationsCount()
+          >= 4) {
+        match.setStatus(CONFIRMED);
+        matchRepository.save(match);
+
+        // Pubblica evento
+        eventPublisher.publishEvent(
+          new MatchConfirmedEvent(
+            this, match));
+      }
+      return match;
+    }
+    ```
+  end note
+
+  note bottom of MatchEventListener
+    **LISTENER (Observer)**
+
+    Reagisce agli eventi pubblicati:
+
+    ```java
+    @Component
+    public class MatchEventListener {
+
+      @EventListener
+      public void handleMatchConfirmed(
+          MatchConfirmedEvent event) {
+
+        Match match = event.getMatch();
+        notificationService
+          .sendMatchConfirmedNotification(
+            match);
+      }
+
+      @EventListener
+      public void handleMatchFinished(
+          MatchFinishedEvent event) {
+
+        Match match = event.getMatch();
+        notificationService
+          .sendMatchFinishedNotification(
+            match);
+      }
+    }
+    ```
+
+    Annotazione @EventListener
+    registra automaticamente i metodi
+    come observer degli eventi.
+  end note
+}
+
+' ========== SINGLETON PATTERN ==========
+
+package "Singleton Pattern - Notification Service" {
+
+  class NotificationService <<Singleton>> {
+    __
+    + sendMatchConfirmedNotification(match: Match): void
+    + sendMatchFinishedNotification(match: Match): void
+  }
+
+  note right of NotificationService
+    **SINGLETON PATTERN**
+
+    **Problema:**
+    Garantire una singola istanza del
+    servizio notifiche nell'applicazione.
+
+    **Soluzione:**
+    Spring Singleton Scope (default)
+
+    **Implementazione:**
+    ```java
+    @Service
+    @Scope("singleton") // esplicito
+    public class NotificationService {
+
+      public void sendMatchConfirmedNotification(
+          Match match) {
+        log.info("🎉 Partita confermata: {}",
+          match.getLocation());
+      }
+    }
+    ```
+
+    **Caratteristiche:**
+    • Spring garantisce singleton per default
+    • Thread-safe (gestito da Spring container)
+    • Lazy initialization controllata
+    • Una sola istanza per ApplicationContext
+
+    **Vantaggi:**
+    • Consistenza stato globale
+    • Controllo centralizzato
+    • Risparmio risorse
+  end note
+}
+
+' ========== NOTE GENERALI ==========
+
+note as N1
+  **PATTERN IMPLEMENTATI NEL PROGETTO**
+
+  **1. MVC (Model-View-Controller)**
+     Architettura generale dell'applicazione
+
+  **2. STRATEGY PATTERN** ⭐
+     Algoritmi intercambiabili per ordinamento
+
+  **3. OBSERVER PATTERN** ⭐
+     Sistema eventi per notifiche
+
+  **4. SINGLETON PATTERN**
+     Servizio notifiche
+
+  **5. REPOSITORY PATTERN**
+     Astrazione accesso dati
+
+  **6. DEPENDENCY INJECTION**
+     Spring IoC container (non custom)
+
+  ⭐ = Pattern aggiuntivi richiesti dalla consegna
+  (oltre a MVC e pattern framework)
+end note
+
+note as N2
+  **PATTERN NON CONTATI**
+  (supportati nativamente da Spring Framework)
+
+  • Dependency Injection (@Autowired)
+  • Inversion of Control (IoC Container)
+  • Proxy (@Transactional)
+  • Factory (Bean creation)
+  • Template Method (JdbcTemplate)
+
+  Questi pattern sono forniti dal framework
+  e non vengono conteggiati come pattern
+  custom implementati.
+end note
+
+@enduml

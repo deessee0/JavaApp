@@ -11,6 +11,57 @@
 
 ## 1. Panoramica Architetturale
 
+### Diagrammi UML del Progetto
+
+La documentazione include i seguenti diagrammi UML, divisi per facilità di lettura e conformità ai requisiti:
+
+#### 1.1 Class Diagrams
+
+**Vista Architetturale:**
+- `class-diagram-overview.puml` - Vista d'insieme packages e relazioni tra layer
+- `class-diagram-complete.puml` - Diagramma completo (backup di riferimento)
+
+**Diagrammi per Package:**
+- `class-diagram-model.puml` - Model layer (entità di dominio e enum)
+- `class-diagram-service.puml` - Service layer (logica business)
+- `class-diagram-repository.puml` - Repository layer (accesso dati)
+- `class-diagram-controller.puml` - Controller e Configuration layer (presentazione)
+
+**Diagrammi Pattern:**
+- `class-diagram-patterns.puml` - Design patterns implementati (Strategy, Observer, Singleton)
+
+#### 1.2 Use Case Diagram
+
+- `use-case-diagram.puml` - Casi d'uso e attori del sistema
+
+#### 1.3 Sequence Diagrams
+
+- `sequence-diagram.puml` - Flusso generale dell'applicazione
+- `strategy-sequence-diagram.puml` - Interazione Strategy pattern
+- `observer-sequence-diagram.puml` - Interazione Observer pattern
+
+**Organizzazione per Requisiti Consegna:**
+
+Ogni diagramma è stato progettato per aderire ai requisiti specificati nella consegna del progetto:
+
+| Requisito Consegna | Diagramma Corrispondente | Descrizione |
+|-------------------|--------------------------|-------------|
+| Use case diagram con descrizione attori e funzionalità | `use-case-diagram.puml` | Mostra tutti i casi d'uso del sistema per Utente e Creator |
+| Class diagram con descrizione packages | `class-diagram-overview.puml` | Vista architetturale con tutti i packages e le loro relazioni |
+| Class diagram con descrizione classi principali per package | `class-diagram-model.puml`<br>`class-diagram-service.puml`<br>`class-diagram-repository.puml`<br>`class-diagram-controller.puml` | Dettaglio di ogni layer/package con tutte le classi, attributi e metodi |
+| Class diagram con descrizione pattern utilizzati | `class-diagram-patterns.puml` | Documentazione dettagliata di Strategy, Observer e Singleton pattern |
+| Sequence/activity/state diagram casi rilevanti | `sequence-diagram.puml`<br>`strategy-sequence-diagram.puml`<br>`observer-sequence-diagram.puml` | Flussi di interazione per casi d'uso principali e pattern |
+
+**Pattern Documentati (oltre a MVC):**
+- ✅ **Strategy Pattern** - Ordinamento partite con algoritmi intercambiabili
+- ✅ **Observer Pattern** - Sistema eventi per notifiche match confirmed/finished
+- ✅ **Singleton Pattern** - NotificationService (gestito da Spring)
+- ✅ **Repository Pattern** - Astrazione accesso dati
+
+*Nota: I pattern forniti nativamente da Spring Framework (Dependency Injection, IoC, Proxy) non sono conteggiati come pattern custom, in conformità con i requisiti.*
+
+---
+
 ### Stack Tecnologico
 
 **Backend**:

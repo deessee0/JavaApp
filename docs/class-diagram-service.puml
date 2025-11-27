@@ -1,0 +1,254 @@
+@startuml Class Diagram - Service Layer
+
+title Sistema Gestione Partite Padel - Service Layer (Business Logic)
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<Service>> LightYellow
+  BackgroundColor<<Singleton>> LightBlue
+  BorderColor Black
+}
+
+package "com.example.padel_app.service" {
+
+  ' ========== SERVIZI PRINCIPALI ==========
+
+  class MatchService <<Service>> {
+    - matchRepository: MatchRepository
+    - registrationRepository: RegistrationRepository
+    - userRepository: UserRepository
+    - eventPublisher: ApplicationEventPublisher
+    - sortingStrategies: Map<String, MatchSortingStrategy>
+    __
+    **Query Methods**
+    + getAllMatches(): List<Match>
+    + getMatchesByStatus(status: MatchStatus): List<Match>
+    + getMatchesByLevel(level: Level): List<Match>
+    + getMatchById(id: Long): Optional<Match>
+    __
+    **Sorting Methods (Strategy Pattern)**
+    + getMatchesOrderedBy(strategy: String): List<Match>
+    + getMatchesOrderedByDate(): List<Match>
+    + getMatchesOrderedByPopularity(): List<Match>
+    + getMatchesOrderedByLevel(): List<Match>
+    + sortMatches(matches: List<Match>, strategy: String): List<Match>
+    __
+    **CRUD Methods**
+    + saveMatch(match: Match): Match
+    + deleteMatch(id: Long): void
+    __
+    **Business Logic Methods**
+    + checkAndConfirmMatch(match: Match): Match
+    + markExpiredMatchesAsFinished(): void
+    + finishMatch(matchId: Long): Match
+  }
+
+  class RegistrationService <<Service>> {
+    - registrationRepository: RegistrationRepository
+    - matchService: MatchService
+    __
+    **Core Methods**
+    + joinMatch(user: User, match: Match): Registration
+    + leaveMatch(user: User, match: Match): void
+    __
+    **Query Methods**
+    + getRegistrationsByUser(user: User): List<Registration>
+    + getRegistrationsByMatch(match: Match): List<Registration>
+    + getActiveRegistrationsByMatch(match: Match): List<Registration>
+    + isUserRegisteredForMatch(user: User, match: Match): boolean
+    + getActiveRegistrationsCount(match: Match): int
+  }
+
+  class FeedbackService <<Service>> {
+    - feedbackRepository: FeedbackRepository
+    - userRepository: UserRepository
+    __
+    **Core Methods**
+    + createFeedback(author: User, targetUser: User, \n    match: Match, suggestedLevel: Level, \n    comment: String): Feedback
+    + updatePerceivedLevel(userId: Long): void
+    __
+    **Query Methods**
+    + getFeedbacksByTargetUser(user: User): List<Feedback>
+    + getFeedbacksByAuthor(user: User): List<Feedback>
+    + getFeedbacksByAuthorAndMatch(author: User, match: Match): List<Feedback>
+    + getFeedbacksByMatch(match: Match): List<Feedback>
+    + getFeedback(author: User, targetUser: User, \n    match: Match): Optional<Feedback>
+  }
+
+  class UserService <<Service>> {
+    - userRepository: UserRepository
+    __
+    + createUser(user: User): User
+    + findById(id: Long): Optional<User>
+    + findAll(): List<User>
+    + updateUser(user: User): User
+  }
+
+  class UserSessionService <<Service>> {
+    __
+    + saveUserInSession(user: User, session: HttpSession): void
+    + getUserFromSession(session: HttpSession): Optional<User>
+    + clearSession(session: HttpSession): void
+    + isAuthenticated(session: HttpSession): boolean
+  }
+
+  class NotificationService <<Singleton>> {
+    __
+    + sendMatchConfirmedNotification(match: Match): void
+    + sendMatchFinishedNotification(match: Match): void
+  }
+}
+
+' ========== DIPENDENZE CON ALTRI LAYER ==========
+
+package "com.example.padel_app.repository" {
+  interface MatchRepository
+  interface RegistrationRepository
+  interface FeedbackRepository
+  interface UserRepository
+}
+
+package "com.example.padel_app.strategy" {
+  interface MatchSortingStrategy
+}
+
+package "com.example.padel_app.event" {
+  class MatchConfirmedEvent
+  class MatchFinishedEvent
+}
+
+' ========== RELAZIONI ==========
+
+' Service → Repository dependencies
+MatchService --> MatchRepository : usa
+MatchService --> RegistrationRepository : queries
+MatchService --> UserRepository : updates matchesPlayed
+
+RegistrationService --> RegistrationRepository : usa
+RegistrationService --> MatchService : checkAndConfirmMatch
+
+FeedbackService --> FeedbackRepository : usa
+FeedbackService --> UserRepository : updates perceivedLevel
+
+UserService --> UserRepository : usa
+
+' Service → Strategy dependencies
+MatchService "1" o-- "*" MatchSortingStrategy : usa strategies
+
+' Service → Event dependencies (Observer Pattern)
+MatchService ..> MatchConfirmedEvent : <<publishes>>
+MatchService ..> MatchFinishedEvent : <<publishes>>
+
+' ========== NOTE ESPLICATIVE ==========
+
+note top of MatchService
+  **MATCH SERVICE**
+
+  Servizio principale per la gestione delle partite.
+
+  Responsabilità:
+  • CRUD partite
+  • Ordinamento con Strategy pattern
+  • Pubblicazione eventi (Observer pattern)
+  • Conferma automatica al 4° giocatore
+  • Marcatura partite scadute come FINISHED
+
+  Annotazioni Spring:
+  @Service
+  @Transactional
+
+  Inietta:
+  • Repository (Dependency Injection)
+  • Strategy map (autowired by name)
+  • ApplicationEventPublisher (Spring events)
+end note
+
+note top of RegistrationService
+  **REGISTRATION SERVICE**
+
+  Gestisce le iscrizioni alle partite.
+
+  Responsabilità:
+  • Join/leave match
+  • Validazione vincoli business (max 4 giocatori)
+  • Riutilizzo registrazioni CANCELLED
+    per evitare unique constraint violation
+
+  Business Logic:
+  1. Controlla se match è pieno
+  2. Controlla iscrizione esistente
+  3. Riutilizza record CANCELLED o crea nuovo
+  4. Dopo join → chiama checkAndConfirmMatch
+end note
+
+note bottom of FeedbackService
+  **FEEDBACK SERVICE**
+
+  Gestisce le valutazioni post-partita.
+
+  Responsabilità:
+  • Creazione feedback con vincoli
+  • Calcolo livello percepito (media feedback)
+
+  Algoritmo updatePerceivedLevel:
+  1. Recupera tutti feedback ricevuti
+  2. Calcola media dei suggestedLevel
+  3. Aggiorna user.perceivedLevel
+
+  Vincolo: un feedback per tripla
+  (author, targetUser, match)
+end note
+
+note right of NotificationService
+  **NOTIFICATION SERVICE**
+
+  **SINGLETON PATTERN**
+
+  Servizio centralizzato per notifiche.
+
+  Spring garantisce singleton scope:
+  @Service (default singleton)
+
+  Attualmente implementa:
+  • Log console delle notifiche
+
+  Estendibile a:
+  • Email notifications
+  • Push notifications
+  • SMS notifications
+  • WebSocket real-time updates
+end note
+
+note bottom of UserSessionService
+  **USER SESSION SERVICE**
+
+  Gestisce autenticazione HTTP session-based.
+
+  Memorizza oggetto User in HttpSession
+  per evitare query ripetute al database.
+
+  Utilizzato da:
+  • AuthController (login/logout)
+  • WebController (verifica autenticazione)
+
+  Alternative future: JWT tokens
+end note
+
+note as N1
+  **SERVICE LAYER PATTERN**
+
+  Il service layer:
+  • Incapsula la logica business
+  • Orchestra repository e altri servizi
+  • Gestisce transazioni (@Transactional)
+  • Pubblica eventi di dominio
+  • Applica validazioni business
+
+  Vantaggi:
+  • Riutilizzo logica business
+  • Testing facilitato (mocking)
+  • Transazioni ACID
+  • Separazione controller/business logic
+end note
+
+@enduml

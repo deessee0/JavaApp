@@ -1,0 +1,305 @@
+@startuml Class Diagram - Controller and Configuration
+
+title Sistema Gestione Partite Padel - Controller & Configuration Layer
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<Controller>> LightBlue
+  BackgroundColor<<Config>> Wheat
+  BackgroundColor<<Bean>> LightCyan
+  BorderColor Black
+}
+
+' ========== CONTROLLER LAYER ==========
+
+package "com.example.padel_app.controller" {
+
+  class WebController <<Controller>> {
+    - matchService: MatchService
+    - userService: UserService
+    - registrationService: RegistrationService
+    - feedbackService: FeedbackService
+    - userSessionService: UserSessionService
+    __
+    **View Rendering:**
+    + home(session: HttpSession, level: String, \n    sort: String, model: Model): String
+    + myMatches(session: HttpSession, status: String, \n    sort: String, model: Model): String
+    + matches(session: HttpSession, level: String, \n    sort: String, model: Model): String
+    + users(session: HttpSession, model: Model): String
+    __
+    **Match Management:**
+    + createMatchForm(session: HttpSession, \n    model: Model): String
+    + createMatch(session: HttpSession, \n    request: CreateMatchRequest, \n    model: Model): String
+    + joinMatch(session: HttpSession, id: Long, \n    redirectAttributes: RedirectAttributes): String
+    + leaveMatch(session: HttpSession, id: Long, \n    redirectAttributes: RedirectAttributes): String
+    + finishMatch(session: HttpSession, id: Long, \n    redirectAttributes: RedirectAttributes): String
+    __
+    **Feedback Management:**
+    + feedbackForm(session: HttpSession, id: Long, \n    model: Model): String
+    + submitFeedback(session: HttpSession, id: Long, \n    targetUserId: Long, suggestedLevel: String, \n    comment: String, \n    redirectAttributes: RedirectAttributes): String
+    __
+    **User Profile:**
+    + myProfile(session: HttpSession, \n    model: Model): String
+    + updateDeclaredLevel(session: HttpSession, \n    declaredLevel: String, \n    redirectAttributes: RedirectAttributes): String
+  }
+
+  class AuthController <<Controller>> {
+    - userRepository: UserRepository
+    - userSessionService: UserSessionService
+    - passwordEncoder: PasswordEncoder
+    __
+    **Authentication Views:**
+    + loginPage(): String
+    + registerPage(): String
+    __
+    **Authentication Actions:**
+    + login(email: String, password: String, \n    session: HttpSession): String
+    + register(request: RegisterRequest, \n    session: HttpSession): String
+    + logout(session: HttpSession): String
+  }
+}
+
+' ========== CONFIGURATION LAYER ==========
+
+package "com.example.padel_app.config" {
+
+  class SecurityConfig <<Config>> {
+    __
+    + passwordEncoder(): BCryptPasswordEncoder
+  }
+
+  class BCryptPasswordEncoder <<Bean>> {
+    __
+    + encode(rawPassword: String): String
+    + matches(rawPassword: String, \n    encodedPassword: String): boolean
+  }
+}
+
+' ========== DEPENDENCIES ==========
+
+package "com.example.padel_app.service" {
+  class MatchService
+  class UserService
+  class RegistrationService
+  class FeedbackService
+  class UserSessionService
+}
+
+package "com.example.padel_app.repository" {
+  interface UserRepository
+}
+
+' Controller dependencies
+WebController --> MatchService : usa
+WebController --> UserService : usa
+WebController --> RegistrationService : usa
+WebController --> FeedbackService : usa
+WebController --> UserSessionService : verifica auth
+
+AuthController --> UserRepository : queries
+AuthController --> UserSessionService : gestisce sessione
+AuthController --> BCryptPasswordEncoder : hash password
+
+' Configuration
+SecurityConfig ..> BCryptPasswordEncoder : <<creates bean>>
+
+' ========== NOTE ESPLICATIVE ==========
+
+note top of WebController
+  **WEB CONTROLLER**
+
+  Controller principale dell'applicazione.
+
+  **Responsabilità:**
+  • Gestione richieste HTTP (GET/POST)
+  • Rendering template Thymeleaf
+  • Orchestrazione Service layer
+  • Validazione input utente
+  • Gestione errori e messaggi flash
+
+  **Pattern MVC:**
+  • Controller: WebController
+  • Model: oggetti passati a Thymeleaf
+  • View: template HTML in /templates
+
+  **Autenticazione:**
+  Ogni metodo verifica sessione:
+  ```java
+  Optional<User> userOpt =
+    userSessionService.getUserFromSession(session);
+  if (userOpt.isEmpty()) {
+    return "redirect:/login";
+  }
+  ```
+
+  **Flash Attributes:**
+  Messaggi temporanei per redirect:
+  redirectAttributes.addFlashAttribute(
+    "success", "Operazione completata!");
+end note
+
+note top of AuthController
+  **AUTH CONTROLLER**
+
+  Gestisce autenticazione e registrazione.
+
+  **Responsabilità:**
+  • Login con email/password
+  • Registrazione nuovi utenti
+  • Logout e pulizia sessione
+  • Hashing password con BCrypt
+
+  **Login Flow:**
+  1. Utente invia email + password
+  2. Controller cerca user per email
+  3. Verifica password con BCrypt.matches()
+  4. Se OK → salva user in sessione
+  5. Redirect a homepage
+
+  **Register Flow:**
+  1. Validazione campi form
+  2. Hash password con BCrypt
+  3. Salvataggio nuovo user
+  4. Auto-login (salva in sessione)
+  5. Redirect a homepage
+
+  **Security:**
+  • Password mai salvate in chiaro
+  • BCrypt con salt automatico
+  • HttpSession per auth semplice
+end note
+
+note bottom of SecurityConfig
+  **SECURITY CONFIGURATION**
+
+  Configurazione sicurezza applicazione.
+
+  **Bean Definitions:**
+  ```java
+  @Configuration
+  public class SecurityConfig {
+
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+      return new BCryptPasswordEncoder();
+    }
+  }
+  ```
+
+  Spring registra il bean nel container
+  e lo inietta dove necessario (@Autowired).
+
+  **BCrypt Password Encoder:**
+  • Algoritmo di hashing one-way
+  • Salt automatico per ogni password
+  • Computazionalmente costoso (anti brute-force)
+  • Standard per password storage
+  • Configurable strength (default 10 rounds)
+
+  **Sicurezza Password:**
+  - Stored: hash BCrypt + salt
+  - Verification: BCrypt.matches(raw, hashed)
+  - Mai possibile recuperare password originale
+end note
+
+note as N1
+  **CONTROLLER LAYER - MVC**
+
+  Il controller layer implementa
+  il pattern MVC:
+
+  **Model:**
+  Oggetti aggiunti al Model di Spring
+  e passati ai template Thymeleaf
+
+  **View:**
+  Template HTML in /templates/
+  • index.html
+  • matches.html
+  • my-matches.html
+  • create-match.html
+  • feedback.html
+  • users.html
+  • login.html
+  • register.html
+  • my-profile.html
+
+  **Controller:**
+  WebController e AuthController
+  gestiscono le richieste e
+  selezionano la view da renderizzare
+
+  **Flow:**
+  Request → Controller → Service
+    → Repository → DB
+  Response ← View ← Model ← Controller
+end note
+
+note as N2
+  **HTTP ENDPOINTS**
+
+  **GET Endpoints:**
+  • / → home page
+  • /matches → lista partite
+  • /matches/my → mie partite
+  • /matches/create → form creazione
+  • /matches/{id}/feedback → form feedback
+  • /users → lista utenti
+  • /profile → profilo utente
+  • /login → form login
+  • /register → form registrazione
+
+  **POST Endpoints:**
+  • /matches → crea partita
+  • /matches/{id}/join → iscriviti
+  • /matches/{id}/leave → disiscriviti
+  • /matches/{id}/finish → termina partita
+  • /matches/{id}/feedback → invia feedback
+  • /profile/level → aggiorna livello
+  • /auth/login → autenticazione
+  • /auth/register → registrazione
+  • /logout → logout
+
+  Tutti POST usano form data,
+  non JSON (architettura tradizionale).
+end note
+
+note as N3
+  **THYMELEAF INTEGRATION**
+
+  Controller popola Model per Thymeleaf:
+
+  ```java
+  @GetMapping("/matches")
+  public String matches(
+      @RequestParam(required = false) String level,
+      @RequestParam(required = false) String sort,
+      Model model) {
+
+    List<Match> matches;
+
+    if (level != null) {
+      matches = matchService
+        .getMatchesByLevel(Level.valueOf(level));
+    } else {
+      matches = matchService.getAllMatches();
+    }
+
+    if (sort != null) {
+      matches = matchService
+        .sortMatches(matches, sort);
+    }
+
+    model.addAttribute("matches", matches);
+    model.addAttribute("levels", Level.values());
+
+    return "matches"; // → matches.html
+  }
+  ```
+
+  Thymeleaf accede a:
+  • ${matches} → lista partite
+  • ${levels} → enum Level
+end note
+
+@enduml
