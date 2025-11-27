@@ -19,7 +19,8 @@ COPY mvnw pom.xml ./
 RUN chmod +x mvnw
 
 # Scarica le dipendenze (questo layer verrà cachato se pom.xml non cambia)
-RUN ./mvnw dependency:go-offline -B
+# Con BuildKit mount cache, le dipendenze vengono cachate tra i build
+RUN --mount=type=cache,target=/root/.m2 ./mvnw dependency:go-offline -B
 
 # Copia il codice sorgente
 COPY src ./src
@@ -30,14 +31,14 @@ COPY src ./src
 FROM base AS test
 # Esegue i test e genera il report di coverage
 # Se i test falliscono, il build Docker si ferma qui
-RUN ./mvnw test jacoco:report
+RUN --mount=type=cache,target=/root/.m2 ./mvnw test jacoco:report
 
 # ==========================================
 # STAGE 3: BUILD (Compilazione JAR)
 # ==========================================
 FROM base AS build
 # Compila l'applicazione saltando i test (già eseguiti nello stage precedente)
-RUN ./mvnw clean package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 ./mvnw clean package -DskipTests
 
 # ==========================================
 # STAGE 4: RUNTIME (Immagine Finale)
