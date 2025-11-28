@@ -1,0 +1,10 @@
+com.example.padel_app
+com.example.padel_app.config
+com.example.padel_app.controller
+com.example.padel_app.event
+com.example.padel_app.listener
+com.example.padel_app.model
+com.example.padel_app.model.enums
+com.example.padel_app.repository
+com.example.padel_app.service
+com.example.padel_app.strategy
