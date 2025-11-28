@@ -28,9 +28,13 @@ echo.
 
 REM Build fino al target 'test'
 set DOCKER_BUILDKIT=1
-docker build --target test --no-cache --progress=plain .
+docker build -t padel-test-image --target test --no-cache --progress=plain .
+set BUILD_STATUS=%ERRORLEVEL%
 
-if %ERRORLEVEL% NEQ 0 (
+REM Cleanup: Rimuovi l'immagine di test creata per evitare "dangling images"
+docker rmi padel-test-image >nul 2>nul
+
+if %BUILD_STATUS% NEQ 0 (
     echo.
     echo ❌ ERRORE: Test su Docker falliti!
     echo.
