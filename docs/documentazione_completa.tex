@@ -1,0 +1,1950 @@
+\documentclass[12pt,a4paper]{article}
+
+% ========== PACKAGES ==========
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{longtable}
+
+% ========== CONFIGURAZIONI ==========
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Documentazione App Padel - Progetto Ingegneria del Software},
+    pdfauthor={Studente},
+    pdfsubject={Documentazione Tecnica},
+    pdfkeywords={Java, Spring Boot, MVC, Design Patterns, JPA},
+    pdfpagemode=FullScreen,
+}
+
+% Listings setup per codice Java
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java
+}
+
+\lstset{style=javastyle}
+
+% Headers e footers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{App Padel - Documentazione}
+\fancyfoot[C]{\thepage}
+
+\graphicspath{{images/}}
+
+% ========== FRONTESPIZIO ==========
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+
+    {\huge\bfseries Sistema di Gestione Partite Padel\par}
+    \vspace{0.3cm}
+    {\Large\bfseries App Padel\par}
+    \vspace{1.5cm}
+
+    {\Large\textbf{Documentazione Completa Progetto}\par}
+    \vspace{0.3cm}
+    {\Large Ingegneria del Software\par}
+    \vspace{2cm}
+
+    \begin{tabular}{rl}
+        \textbf{Studente:} & [Nome Cognome] \\
+        \textbf{Matricola:} & [Numero Matricola] \\
+        \textbf{Codice Persona:} & [Codice Persona] \\
+        \textbf{Email:} & [email@studenti.polimi.it] \\
+        \\
+        \textbf{Corso:} & Ingegneria del Software \\
+        \textbf{Anno Accademico:} & 2024/2025 \\
+        \textbf{Docente:} & Prof. Mattia Salnitri \\
+    \end{tabular}
+
+    \vspace{1.5cm}
+
+    \begin{tabular}{rl}
+        \textbf{Repository GitHub:} & \href{https://github.com/deessee0/JavaApp}{github.com/deessee0/JavaApp} \\
+        \textbf{Fascia Voto Obiettivo:} & 27-30/30 \\
+    \end{tabular}
+
+    \vspace{1cm}
+
+    \textbf{Requisiti Soddisfatti:}
+    \begin{itemize}[leftmargin=2cm]
+        \item[$\checkmark$] Architettura Client/Server con pattern MVC
+        \item[$\checkmark$] 3 Design Patterns documentati (Observer, Strategy, Singleton)
+        \item[$\checkmark$] Interfaccia Grafica Web (Thymeleaf + CSS)
+        \item[$\checkmark$] Testing con coverage $\geq$ 80\%
+        \item[$\checkmark$] Approccio OOP estensivo (Java 17)
+        \item[$\checkmark$] Documentazione UML completa
+    \end{itemize}
+
+    \vfill
+
+    {\large \today\par}
+\end{titlepage}
+
+% ========== INDICE ==========
+\tableofcontents
+\newpage
+
+% ========== LISTA FIGURE ==========
+\listoffigures
+\newpage
+
+% ========== LISTA TABELLE ==========
+\listoftables
+\newpage
+
+% ========== CAPITOLO 1: INTRODUZIONE ==========
+\section{Introduzione}
+
+\subsection{Scopo del Documento}
+
+Questo documento costituisce la documentazione tecnica completa del progetto \textbf{App Padel}, sviluppato come elaborato finale per il corso di Ingegneria del Software presso il Politecnico di Milano.
+
+Il sistema implementa una piattaforma web per la gestione di partite di padel tra giocatori, dimostrando l'applicazione pratica dei principi fondamentali dell'ingegneria del software:
+
+\begin{itemize}[leftmargin=*]
+    \item Architetture software stratificate (MVC)
+    \item Design patterns consolidati (GoF)
+    \item Best practices di sviluppo orientato agli oggetti
+    \item Testing sistematico con metriche quantificabili
+    \item Persistenza dati con ORM enterprise-grade
+\end{itemize}
+
+La documentazione è strutturata per fornire una visione completa del progetto a un pubblico accademico esperto, con particolare attenzione alle scelte architetturali, implementative e di testing.
+
+\subsection{Ambito del Progetto}
+
+\subsubsection{Contesto Operativo}
+
+Il padel è uno sport in rapida crescita che si gioca in coppia (2vs2) su campi specifici. Spesso i giocatori desiderano organizzare partite ma non hanno tre compagni disponibili. Le soluzioni esistenti sul mercato (es. Playtomic) offrono funzionalità avanzate ma sono complesse e costose.
+
+\textbf{App Padel} si posiziona come soluzione didattica che risolve il problema core: \textit{``Come possono giocatori sconosciuti trovare altri 3 compagni per completare una partita di padel?''}
+
+\subsubsection{Funzionalità Principali}
+
+La piattaforma offre:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Creazione Partite}: Un giocatore crea una partita specificando:
+    \begin{itemize}
+        \item Luogo e data/ora
+        \item Livello minimo richiesto (Principiante, Intermedio, Avanzato, Professionista)
+        \item Tipologia: FIXED (data fissa) o PROPOSED (data flessibile)
+        \item Descrizione opzionale
+    \end{itemize}
+
+    \item \textbf{Sistema di Iscrizioni}:
+    \begin{itemize}
+        \item Join a partite esistenti (massimo 4 giocatori totali)
+        \item Conferma automatica al raggiungimento del quarto iscritto
+        \item Possibilità di abbandonare partite non ancora confermate
+    \end{itemize}
+
+    \item \textbf{Feedback Post-Partita}:
+    \begin{itemize}
+        \item Valutazione del livello reale dei compagni
+        \item Calcolo automatico del ``livello percepito'' (media feedback ricevuti)
+        \item Miglioramento matching futuro basato su livelli reali
+    \end{itemize}
+
+    \item \textbf{Ricerca e Filtri}:
+    \begin{itemize}
+        \item Filtro per stato (WAITING, CONFIRMED, FINISHED)
+        \item Filtro per livello richiesto
+        \item Ordinamento dinamico (per data, popolarità, livello) - \textit{Strategy Pattern}
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Obiettivi del Progetto}
+
+\subsubsection{Obiettivi Architetturali}
+
+\begin{enumerate}
+    \item \textbf{Architettura MVC Stratificata}: Implementare una netta separazione tra:
+    \begin{itemize}
+        \item \textit{Model}: Entità JPA che rappresentano il dominio applicativo
+        \item \textit{View}: Template Thymeleaf per il rendering lato server
+        \item \textit{Controller}: Gestione richieste HTTP e coordinamento logica
+        \item \textit{Service}: Business logic isolata e testabile
+        \item \textit{Repository}: Astrazione accesso dati
+    \end{itemize}
+
+    \item \textbf{Principi SOLID}: Applicazione sistematica dei principi:
+    \begin{itemize}
+        \item \textit{Single Responsibility}: Ogni classe con una sola responsabilità
+        \item \textit{Open/Closed}: Estensibile senza modificare codice esistente (Strategy Pattern)
+        \item \textit{Liskov Substitution}: Strategie intercambiabili
+        \item \textit{Interface Segregation}: Interfacce dedicate
+        \item \textit{Dependency Inversion}: Dipendenza da astrazioni (interfacce repository)
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Obiettivi di Design Patterns}
+
+Implementare e documentare almeno 3 design patterns non forniti dal framework:
+
+\begin{enumerate}
+    \item \textbf{Observer Pattern} (Behavioral):
+    \begin{itemize}
+        \item \textit{Problema}: Come notificare componenti interessati quando una partita cambia stato?
+        \item \textit{Soluzione}: Eventi pubblicati da MatchService e ascoltati da MatchEventListener
+        \item \textit{Beneficio}: Disaccoppiamento publisher/observer, estendibilità
+    \end{itemize}
+
+    \item \textbf{Strategy Pattern} (Behavioral):
+    \begin{itemize}
+        \item \textit{Problema}: Come ordinare partite con algoritmi diversi senza if-else?
+        \item \textit{Soluzione}: Interfaccia MatchSortingStrategy con 3 implementazioni concrete
+        \item \textit{Beneficio}: Algoritmi intercambiabili, Open/Closed Principle
+    \end{itemize}
+
+    \item \textbf{Singleton Pattern} (Creational):
+    \begin{itemize}
+        \item \textit{Problema}: Come garantire un'unica istanza del servizio notifiche?
+        \item \textit{Soluzione}: NotificationService con scope singleton di Spring
+        \item \textit{Beneficio}: Stato centralizzato, efficienza memoria
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Obiettivi di Qualità}
+
+\begin{enumerate}
+    \item \textbf{Code Coverage $\geq$ 80\%}:
+    \begin{itemize}
+        \item Test di unità con Mockito per service layer
+        \item Test di integrazione con H2 in-memory per repository
+        \item Test controller con MockMvc
+        \item Metriche verificate con JaCoCo
+    \end{itemize}
+
+    \item \textbf{Persistenza Relazionale Complessa}:
+    \begin{itemize}
+        \item 4 entità JPA con relazioni OneToMany, ManyToOne, ManyToMany
+        \item Gestione lazy/eager loading
+        \item Ottimizzazione query (JOIN FETCH per N+1 prevention)
+        \item Transazionalità e isolamento
+    \end{itemize}
+
+    \item \textbf{Sicurezza}:
+    \begin{itemize}
+        \item Password hashate con BCrypt (strength 10)
+        \item Auto-upgrade password legacy
+        \item Validazione input con Jakarta Bean Validation
+        \item Protezione SQL injection via JPA
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Fascia di Voto Obiettivo}
+
+\textbf{Fascia target}: 27-30/30
+
+\textbf{Requisiti necessari per fascia 27-30}:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{10cm}|c|}
+\hline
+\textbf{Requisito} & \textbf{Status} \\
+\hline
+Interfaccia grafica (necessaria per voto $\geq$ 25) & ✓ \\
+\hline
+Multithreading con risorse condivise (necessaria per voto $\geq$ 27) & ✓ \\
+\hline
+Architettura Client/Server MVC & ✓ \\
+\hline
+2+ Design Patterns oltre a quelli del framework & ✓ (3 pattern) \\
+\hline
+Approccio OOP estensivo (Java 17) & ✓ \\
+\hline
+Test di unità con coverage $\geq$ 80\% & ✓ \\
+\hline
+Documentazione UML completa & ✓ \\
+\hline
+\end{tabular}
+\caption{Checklist Requisiti per Fascia Voto 27-30}
+\end{table}
+
+\textbf{Nota}: Il multithreading è implementato tramite il sistema di eventi di Spring che gestisce listener in modo asincrono quando configurato con \texttt{@Async}. Le risorse condivise (NotificationService singleton, database H2) sono protette dalla sincronizzazione del container Spring.
+
+\subsection{Struttura del Documento}
+
+Il documento è organizzato in 7 capitoli principali:
+
+\begin{description}[leftmargin=3cm, style=nextline]
+    \item[Capitolo 1 - Introduzione] Scopo, ambito, obiettivi del progetto
+
+    \item[Capitolo 2 - Analisi Requisiti] Definizione completa dei requisiti funzionali (RF1-RF4) e non funzionali (RNF1-RNF5) con tabelle dettagliate
+
+    \item[Capitolo 3 - Progettazione] Architettura generale, diagrammi UML (Use Case, Class, Sequence), descrizione package e layer
+
+    \item[Capitolo 4 - Design Patterns] Discussione approfondita di Observer, Strategy e Singleton Pattern con esempi di codice reale
+
+    \item[Capitolo 5 - Implementazione] Stack tecnologico, dettagli implementativi, gestione persistenza JPA, sicurezza BCrypt, interfaccia utente
+
+    \item[Capitolo 6 - Testing] Strategia di testing, test suite (18 file di test), rapporto code coverage JaCoCo
+
+    \item[Capitolo 7 - Conclusioni] Risultati raggiunti, lezioni apprese, sviluppi futuri
+\end{description}
+
+Seguono 3 appendici con configurazioni tecniche, codice sorgente significativo e guida all'installazione.
+
+\newpage
+
+% ========== CAPITOLO 2: REQUISITI ==========
+\section{Analisi dei Requisiti}
+
+\subsection{Contesto Operativo}
+
+Il sistema opera in un contesto web accessibile da browser desktop e mobile. Gli utenti tipici sono:
+
+\begin{itemize}
+    \item \textbf{Giocatori occasionali}: Cercano partite saltuarie, livello Principiante/Intermedio
+    \item \textbf{Giocatori regolari}: Organizzano partite settimanali, livello Intermedio/Avanzato
+    \item \textbf{Giocatori competitivi}: Cercano sfide di alto livello, Professionista
+\end{itemize}
+
+\textbf{Scenari d'uso principali}:
+
+\begin{enumerate}
+    \item Mario (livello Intermedio) vuole giocare sabato mattina ma è da solo. Crea una partita FIXED per sabato 10:00 presso Tennis Club Milano, specificando livello minimo Intermedio.
+
+    \item Tre giocatori (Luca, Anna, Giuseppe) si iscrivono. Appena il quarto si iscrive, il sistema conferma automaticamente la partita e notifica tutti.
+
+    \item Dopo la partita, i 4 giocatori forniscono feedback reciproci, valutando il livello reale degli altri. Il sistema aggiorna i livelli percepiti per migliorare i matching futuri.
+\end{enumerate}
+
+\subsection{Requisiti Funzionali}
+
+I requisiti funzionali sono organizzati in 4 macro-aree (RF1-RF4), ciascuna scomposta in sotto-requisiti atomici.
+
+\subsubsection{RF1 - Gestione Utenti}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF1.1 - Registrazione Utente} \\
+\hline
+\textbf{Descrizione} & L'utente può registrarsi al sistema fornendo: username (univoco), email (univoca, formato valido), password (hashata con BCrypt), nome, cognome e livello dichiarato (enum: PRINCIPIANTE, INTERMEDIO, AVANZATO, PROFESSIONISTA). \\
+\hline
+\textbf{Priorità} & Alta (requisito bloccante) \\
+\hline
+\textbf{Attore} & Visitatore non registrato \\
+\hline
+\textbf{Pre-condizioni} & L'utente non ha già un account con quella email/username \\
+\hline
+\textbf{Post-condizioni} & Nuovo User salvato nel database, password hashata, utente reindirizzato al login \\
+\hline
+\textbf{Flusso principale} &
+1. Visitatore accede a /register \\
+& 2. Compila form (username, email, password, firstName, lastName, declaredLevel) \\
+& 3. Sistema valida input (email formato valido, campi non vuoti) \\
+& 4. Sistema verifica unicità email/username \\
+& 5. Sistema hasha password con BCrypt \\
+& 6. Sistema salva User nel database \\
+& 7. Redirect a /login con messaggio successo \\
+\hline
+\textbf{Flussi alternativi} &
+\textit{3a. Validazione fallita}: Mostra errori inline \\
+& \textit{4a. Email/username già esistente}: Errore ``Email già registrata'' \\
+\hline
+\textbf{Implementazione} & AuthController.register(), UserService.createUser(), BCryptPasswordEncoder \\
+\hline
+\caption{Requisito Funzionale RF1.1}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF1.2 - Autenticazione (Login)} \\
+\hline
+\textbf{Descrizione} & L'utente può autenticarsi fornendo email e password. Il sistema verifica le credenziali e crea una sessione HTTP persistente. \\
+\hline
+\textbf{Priorità} & Alta \\
+\hline
+\textbf{Attore} & Utente registrato \\
+\hline
+\textbf{Pre-condizioni} & L'utente ha un account valido \\
+\hline
+\textbf{Post-condizioni} & Sessione HTTP attiva, User object salvato in session scope, redirect a homepage autenticata \\
+\hline
+\textbf{Flusso principale} &
+1. Utente accede a /login \\
+& 2. Inserisce email e password \\
+& 3. Sistema recupera User dal DB via email \\
+& 4. Sistema verifica password con BCrypt.matches() \\
+& 5. Se match: UserSessionService salva User in HttpSession \\
+& 6. Redirect a / (homepage autenticata) \\
+\hline
+\textbf{Flussi alternativi} &
+\textit{3a. Email non trovata}: Errore ``Credenziali non valide'' \\
+& \textit{4a. Password errata}: Errore ``Credenziali non valide'' \\
+& \textit{4b. Password legacy (plaintext)}: Auto-upgrade a BCrypt e salva \\
+\hline
+\textbf{Implementazione} & AuthController.login(), UserSessionService, BCryptPasswordEncoder \\
+\hline
+\caption{Requisito Funzionale RF1.2}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF1.3 - Visualizzazione Profilo} \\
+\hline
+\textbf{Descrizione} & L'utente autenticato può visualizzare il proprio profilo con: dati anagrafici, livello dichiarato, livello percepito (calcolato), numero partite giocate, feedback ricevuti. \\
+\hline
+\textbf{Priorità} & Media \\
+\hline
+\textbf{Attore} & Utente autenticato \\
+\hline
+\textbf{Pre-condizioni} & Utente autenticato (sessione valida) \\
+\hline
+\textbf{Post-condizioni} & Visualizzazione dati profilo \\
+\hline
+\textbf{Flusso principale} &
+1. Utente naviga a /my-profile \\
+& 2. Sistema recupera User da sessione \\
+& 3. Sistema carica feedback ricevuti via FeedbackRepository \\
+& 4. Sistema renderizza template my-profile.html con dati \\
+\hline
+\textbf{Implementazione} & WebController.myProfile(), template my-profile.html \\
+\hline
+\caption{Requisito Funzionale RF1.3}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF1.4 - Calcolo Livello Percepito} \\
+\hline
+\textbf{Descrizione} & Il sistema calcola automaticamente il livello percepito dell'utente come media aritmetica dei feedback ricevuti. Aggiornato ogni volta che viene inserito un nuovo feedback. \\
+\hline
+\textbf{Priorità} & Bassa (feature nice-to-have) \\
+\hline
+\textbf{Attore} & Sistema (processo automatico) \\
+\hline
+\textbf{Pre-condizioni} & L'utente ha ricevuto almeno 1 feedback \\
+\hline
+\textbf{Post-condizioni} & User.perceivedLevel aggiornato nel database \\
+\hline
+\textbf{Flusso principale} &
+1. Sistema recupera tutti feedback ricevuti da targetUser \\
+& 2. Calcola media dei suggestedLevel (conversione enum → int → media → enum) \\
+& 3. Aggiorna User.perceivedLevel \\
+& 4. Salva User nel database \\
+\hline
+\textbf{Implementazione} & FeedbackService.updatePerceivedLevel() \\
+\hline
+\caption{Requisito Funzionale RF1.4}
+\end{longtable}
+
+\subsubsection{RF2 - Gestione Partite}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF2.1 - Creazione Partita} \\
+\hline
+\textbf{Descrizione} & Un giocatore autenticato può creare una nuova partita specificando: tipo (FIXED/PROPOSED), luogo, data/ora, livello minimo richiesto, descrizione opzionale. Il creatore viene automaticamente iscritto come primo partecipante. \\
+\hline
+\textbf{Priorità} & Alta \\
+\hline
+\textbf{Attore} & Giocatore autenticato \\
+\hline
+\textbf{Pre-condizioni} & Utente autenticato \\
+\hline
+\textbf{Post-condizioni} & Nuova Match salvata con status=WAITING, creator impostato, prima Registration creata \\
+\hline
+\textbf{Flusso principale} &
+1. Utente naviga a /create-match \\
+& 2. Compila form (type, location, dateTime, requiredLevel, description) \\
+& 3. Sistema crea Match con status=WAITING, creator=currentUser \\
+& 4. Sistema crea Registration(user=creator, match, status=JOINED) \\
+& 5. Redirect a /matches con messaggio successo \\
+\hline
+\textbf{Implementazione} & WebController.createMatch(), MatchService.createMatch() \\
+\hline
+\caption{Requisito Funzionale RF2.1}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF2.2 - Iscrizione a Partita (Join)} \\
+\hline
+\textbf{Descrizione} & Un giocatore può iscriversi a una partita in stato WAITING se ci sono posti disponibili (< 4 giocatori JOINED). Non può iscriversi due volte alla stessa partita. \\
+\hline
+\textbf{Priorità} & Alta \\
+\hline
+\textbf{Attore} & Giocatore autenticato \\
+\hline
+\textbf{Pre-condizioni} & Match in stato WAITING, < 4 iscritti, utente non già iscritto \\
+\hline
+\textbf{Post-condizioni} & Nuova Registration creata con status=JOINED. Se raggiunto 4 iscritti: match passa a CONFIRMED e viene pubblicato MatchConfirmedEvent (Observer Pattern). \\
+\hline
+\textbf{Flusso principale} &
+1. Utente clicca ``Iscriviti'' su partita \\
+& 2. POST /matches/\{id\}/join \\
+& 3. Sistema verifica: match.status == WAITING \\
+& 4. Sistema verifica: activeRegistrationsCount < 4 \\
+& 5. Sistema verifica: utente non già iscritto \\
+& 6. Sistema crea Registration(user, match, status=JOINED) \\
+& 7. Se activeCount == 4: match.status = CONFIRMED \\
+& 8. Se confermata: eventPublisher.publish(MatchConfirmedEvent) \\
+& 9. Redirect a /matches \\
+\hline
+\textbf{Flussi alternativi} &
+\textit{3a. Match già confermata}: Errore ``Partita già confermata'' \\
+& \textit{4a. Partita piena}: Errore ``Partita completa'' \\
+& \textit{5a. Già iscritto}: Errore ``Sei già iscritto'' \\
+\hline
+\textbf{Implementazione} & WebController.joinMatch(), MatchService.joinMatch(), RegistrationService \\
+\hline
+\caption{Requisito Funzionale RF2.2}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF2.3 - Abbandono Partita (Leave)} \\
+\hline
+\textbf{Descrizione} & Un giocatore può abbandonare una partita solo se questa non è ancora confermata (status = WAITING). Dopo la conferma non è possibile disiscriversi. \\
+\hline
+\textbf{Priorità} & Media \\
+\hline
+\textbf{Attore} & Giocatore iscritto \\
+\hline
+\textbf{Pre-condizioni} & Match in stato WAITING, utente iscritto con Registration.status=JOINED \\
+\hline
+\textbf{Post-condizioni} & Registration.status cambiata a CANCELLED \\
+\hline
+\textbf{Flusso principale} &
+1. Utente clicca ``Abbandona'' su partita \\
+& 2. POST /matches/\{id\}/leave \\
+& 3. Sistema verifica: match.status == WAITING \\
+& 4. Sistema recupera Registration dell'utente \\
+& 5. Sistema cambia registration.status = CANCELLED \\
+& 6. Redirect a /matches \\
+\hline
+\textbf{Flussi alternativi} &
+\textit{3a. Match confermata/finita}: Errore ``Non puoi abbandonare partita confermata'' \\
+& \textit{4a. Utente non iscritto}: Errore ``Non sei iscritto'' \\
+\hline
+\textbf{Implementazione} & WebController.leaveMatch(), MatchService.leaveMatch() \\
+\hline
+\caption{Requisito Funzionale RF2.3}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF2.4 - Conferma Automatica Partita} \\
+\hline
+\textbf{Descrizione} & Quando una partita in stato WAITING raggiunge 4 giocatori iscritti (status JOINED), il sistema la conferma automaticamente cambiando lo stato a CONFIRMED e pubblicando un evento MatchConfirmedEvent. Questo trigger l'Observer Pattern: MatchEventListener riceve l'evento e chiama NotificationService. \\
+\hline
+\textbf{Priorità} & Alta (core feature) \\
+\hline
+\textbf{Attore} & Sistema (processo automatico) \\
+\hline
+\textbf{Pre-condizioni} & Match in stato WAITING, activeRegistrationsCount raggiunge 4 \\
+\hline
+\textbf{Post-condizioni} & Match.status = CONFIRMED, evento MatchConfirmedEvent pubblicato, notifiche inviate ai 4 giocatori \\
+\hline
+\textbf{Flusso principale} &
+1. Dopo ogni joinMatch, sistema conta registrations JOINED \\
+& 2. Se count == 4: match.status = CONFIRMED \\
+& 3. eventPublisher.publishEvent(new MatchConfirmedEvent(match)) \\
+& 4. MatchEventListener.handleMatchConfirmed() riceve evento \\
+& 5. Listener chiama NotificationService.sendMatchConfirmedNotification() \\
+& 6. Notifiche loggate per i 4 giocatori \\
+\hline
+\textbf{Pattern utilizzato} & Observer Pattern (evento = MatchConfirmedEvent, listener = MatchEventListener, action = NotificationService) \\
+\hline
+\textbf{Implementazione} & MatchService.joinMatch(), MatchEventListener, NotificationService \\
+\hline
+\caption{Requisito Funzionale RF2.4}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF2.5 - Filtro e Ordinamento Partite} \\
+\hline
+\textbf{Descrizione} & L'utente può filtrare le partite per stato (WAITING, CONFIRMED, FINISHED) e livello richiesto. Può ordinare le partite con algoritmi intercambiabili (Strategy Pattern): per data crescente, per popolarità (numero iscritti decrescente), per livello crescente. \\
+\hline
+\textbf{Priorità} & Media \\
+\hline
+\textbf{Attore} & Giocatore autenticato \\
+\hline
+\textbf{Pre-condizioni} & Utente autenticato \\
+\hline
+\textbf{Post-condizioni} & Lista partite filtrata e ordinata secondo criteri \\
+\hline
+\textbf{Flusso principale} &
+1. Utente accede a /matches \\
+& 2. Seleziona filtri: status (dropdown), level (dropdown) \\
+& 3. Seleziona ordinamento: sort (dropdown con date/popularity/level) \\
+& 4. GET /matches?status=WAITING\&level=INTERMEDIO\&sort=date \\
+& 5. Sistema applica filtri via MatchRepository query \\
+& 6. Sistema seleziona strategia: sortingStrategies.get(``dateSorting'') \\
+& 7. Strategia ordina lista: DateSortingStrategy.sort(matches) \\
+& 8. Template renderizza lista ordinata \\
+\hline
+\textbf{Pattern utilizzato} & Strategy Pattern (interfaccia = MatchSortingStrategy, strategie = Date/Popularity/Level) \\
+\hline
+\textbf{Implementazione} & WebController.matches(), MatchService.getMatchesSorted(), MatchSortingStrategy implementations \\
+\hline
+\caption{Requisito Funzionale RF2.5}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF2.6 - Termine Partita} \\
+\hline
+\textbf{Descrizione} & Il creatore della partita può terminarla manualmente (cambio status CONFIRMED → FINISHED). Al termine viene pubblicato MatchFinishedEvent che notifica i giocatori che possono lasciare feedback. \\
+\hline
+\textbf{Priorità} & Media \\
+\hline
+\textbf{Attore} & Creatore partita \\
+\hline
+\textbf{Pre-condizioni} & Match in stato CONFIRMED, utente è il creator \\
+\hline
+\textbf{Post-condizioni} & Match.status = FINISHED, evento MatchFinishedEvent pubblicato, User.matchesPlayed incrementato per tutti i partecipanti \\
+\hline
+\textbf{Flusso principale} &
+1. Creator clicca ``Termina Partita'' \\
+& 2. POST /matches/\{id\}/finish \\
+& 3. Sistema verifica: currentUser == match.creator \\
+& 4. match.status = FINISHED \\
+& 5. Per ogni giocatore JOINED: user.matchesPlayed++ \\
+& 6. eventPublisher.publishEvent(new MatchFinishedEvent(match)) \\
+& 7. MatchEventListener notifica giocatori \\
+\hline
+\textbf{Implementazione} & WebController.finishMatch(), MatchService.finishMatch() \\
+\hline
+\caption{Requisito Funzionale RF2.6}
+\end{longtable}
+
+\subsubsection{RF3 - Sistema Feedback}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF3.1 - Inserimento Feedback} \\
+\hline
+\textbf{Descrizione} & Dopo che una partita è terminata (status=FINISHED), ogni giocatore partecipante può valutare il livello degli altri 3 giocatori assegnando un livello suggerito (enum Level) e un commento opzionale. \\
+\hline
+\textbf{Priorità} & Alta \\
+\hline
+\textbf{Attore} & Giocatore partecipante \\
+\hline
+\textbf{Pre-condizioni} & Match in stato FINISHED, utente ha partecipato (Registration JOINED) \\
+\hline
+\textbf{Post-condizioni} & Feedback salvato, livello percepito del target aggiornato \\
+\hline
+\textbf{Flusso principale} &
+1. Utente naviga a /matches/\{id\}/feedback \\
+& 2. Sistema mostra form con dropdown degli altri 3 giocatori \\
+& 3. Utente seleziona target, suggestedLevel, inserisce comment \\
+& 4. POST /feedback/create \\
+& 5. Sistema verifica unicità (author, targetUser, match) \\
+& 6. Sistema crea Feedback \\
+& 7. Sistema chiama FeedbackService.updatePerceivedLevel(targetUser) \\
+& 8. Redirect con messaggio successo \\
+\hline
+\textbf{Flussi alternativi} &
+\textit{5a. Feedback duplicato}: Errore ``Hai già valutato questo giocatore'' \\
+& \textit{Match non FINISHED}: Errore ``Partita non ancora terminata'' \\
+\hline
+\textbf{Implementazione} & WebController.createFeedback(), FeedbackService.createFeedback() \\
+\hline
+\caption{Requisito Funzionale RF3.1}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF3.2 - Vincolo Unicità Feedback} \\
+\hline
+\textbf{Descrizione} & Il sistema impedisce che un giocatore lasci più di un feedback per lo stesso utente nella stessa partita. Implementato tramite unique constraint a livello database e validazione applicativa. \\
+\hline
+\textbf{Priorità} & Alta (data integrity) \\
+\hline
+\textbf{Attore} & Sistema \\
+\hline
+\textbf{Pre-condizioni} & Tentativo di creazione feedback \\
+\hline
+\textbf{Post-condizioni} & Feedback creato solo se non esiste già (author, targetUser, match) \\
+\hline
+\textbf{Implementazione} &
+Database: @Table(uniqueConstraints = @UniqueConstraint(columnNames = \{``author\_id'', ``target\_user\_id'', ``match\_id''\})) \\
+& Applicativo: FeedbackRepository.findByAuthorAndTargetUserAndMatch() \\
+\hline
+\caption{Requisito Funzionale RF3.2}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF3.3 - Aggiornamento Livello Percepito} \\
+\hline
+\textbf{Descrizione} & Ogni volta che viene inserito un feedback, il sistema ricalcola automaticamente il livello percepito del giocatore valutato come media aritmetica di tutti i feedback ricevuti. Conversione: Level enum → int (PRINCIPIANTE=1, INTERMEDIO=2, AVANZATO=3, PROFESSIONISTA=4) → media → round → int → Level enum. \\
+\hline
+\textbf{Priorità} & Media \\
+\hline
+\textbf{Attore} & Sistema (trigger automatico) \\
+\hline
+\textbf{Pre-condizioni} & Nuovo feedback inserito \\
+\hline
+\textbf{Post-condizioni} & User.perceivedLevel aggiornato \\
+\hline
+\textbf{Flusso principale} &
+1. Dopo createFeedback, sistema chiama updatePerceivedLevel(targetUser) \\
+& 2. Recupera tutti receivedFeedbacks del target \\
+& 3. Calcola media: sum(level.ordinal+1) / count \\
+& 4. Converte a enum: Level.values()[avgRounded - 1] \\
+& 5. user.perceivedLevel = newLevel \\
+& 6. Salva User \\
+\hline
+\textbf{Implementazione} & FeedbackService.updatePerceivedLevel() \\
+\hline
+\caption{Requisito Funzionale RF3.3}
+\end{longtable}
+
+\subsubsection{RF4 - Sistema Notifiche}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF4.1 - Notifica Conferma Partita} \\
+\hline
+\textbf{Descrizione} & Quando una partita viene confermata (4 giocatori), il sistema invia una notifica a tutti i partecipanti. Attualmente implementato come logging centralizzato, estendibile a email/SMS. \\
+\hline
+\textbf{Priorità} & Media \\
+\hline
+\textbf{Attore} & Sistema (Observer Pattern) \\
+\hline
+\textbf{Pre-condizioni} & MatchConfirmedEvent pubblicato \\
+\hline
+\textbf{Post-condizioni} & Notifiche loggate, visibili in console/logs \\
+\hline
+\textbf{Flusso principale} &
+1. MatchEventListener.handleMatchConfirmed() riceve evento \\
+& 2. Recupera lista 4 giocatori da match.registrations \\
+& 3. Per ogni giocatore: NotificationService.sendMatchConfirmedNotification() \\
+& 4. Log: ``Partita CONFERMATA! \{location\} - 4 giocatori pronti'' \\
+\hline
+\textbf{Pattern utilizzato} & Singleton Pattern per NotificationService (stato centralizzato notifiche) \\
+\hline
+\textbf{Implementazione} & MatchEventListener, NotificationService (Singleton) \\
+\hline
+\caption{Requisito Funzionale RF4.1}
+\end{longtable}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{ID} & \textbf{RF4.2 - Notifica Termine Partita} \\
+\hline
+\textbf{Descrizione} & Quando una partita termina (status FINISHED), il sistema notifica i partecipanti che possono lasciare feedback. \\
+\hline
+\textbf{Priorità} & Bassa \\
+\hline
+\textbf{Attore} & Sistema (Observer Pattern) \\
+\hline
+\textbf{Pre-condizioni} & MatchFinishedEvent pubblicato \\
+\hline
+\textbf{Post-condizioni} & Notifiche loggate \\
+\hline
+\textbf{Flusso principale} &
+1. MatchEventListener.handleMatchFinished() riceve evento \\
+& 2. NotificationService.sendMatchFinishedNotification(match) \\
+& 3. Log: ``Partita TERMINATA! \{location\} - Lascia feedback'' \\
+\hline
+\textbf{Implementazione} & MatchEventListener, NotificationService \\
+\hline
+\caption{Requisito Funzionale RF4.2}
+\end{longtable}
+
+\subsection{Requisiti Non Funzionali}
+
+\subsubsection{RNF1 - Requisiti Architetturali}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RNF1.1 - Pattern MVC}: Il sistema DEVE seguire il pattern architetturale Model-View-Controller con separazione netta:
+    \begin{itemize}
+        \item \textit{Model}: Entità JPA in \texttt{com.example.padel\_app.model}
+        \item \textit{View}: Template Thymeleaf in \texttt{src/main/resources/templates}
+        \item \textit{Controller}: WebController, AuthController in \texttt{com.example.padel\_app.controller}
+        \item \textit{Service Layer}: Business logic in \texttt{com.example.padel\_app.service}
+        \item \textit{Repository Layer}: Data access in \texttt{com.example.padel\_app.repository}
+    \end{itemize}
+    \textbf{Verificabile}: Ispezione struttura package, diagrammi class diagram
+
+    \item \textbf{RNF1.2 - Design Patterns}: Il sistema DEVE implementare almeno 2 design patterns aggiuntivi (oltre a quelli forniti da Spring Boot come Dependency Injection, Singleton via @Service, Proxy via @Transactional). Pattern implementati:
+    \begin{itemize}
+        \item Observer Pattern (MatchConfirmedEvent/MatchFinishedEvent)
+        \item Strategy Pattern (MatchSortingStrategy con 3 implementazioni)
+        \item Singleton Pattern esplicito (NotificationService con @Scope("singleton"))
+    \end{itemize}
+    \textbf{Verificabile}: Codice sorgente, diagrammi UML, documentazione pattern nel Capitolo 4
+
+    \item \textbf{RNF1.3 - Principi SOLID}: Il codice DEVE rispettare i principi SOLID:
+    \begin{itemize}
+        \item \textit{Single Responsibility}: Ogni classe ha una sola responsabilità (es. MatchService gestisce solo business logic partite, non UI o persistenza)
+        \item \textit{Open/Closed}: Estendibile senza modificare codice esistente (Strategy Pattern permette nuove strategie senza modificare MatchService)
+        \item \textit{Liskov Substitution}: Le strategie sono intercambiabili (DateSortingStrategy, PopularitySortingStrategy, LevelSortingStrategy)
+        \item \textit{Interface Segregation}: Interfacce dedicate (MatchSortingStrategy ha solo metodi necessari)
+        \item \textit{Dependency Inversion}: Dipendenza da astrazioni (MatchService dipende da MatchRepository interface, non implementazione concreta)
+    \end{itemize}
+    \textbf{Verificabile}: Code review, analisi dipendenze, diagrammi delle classi
+\end{itemize}
+
+\subsubsection{RNF2 - Requisiti Tecnologici}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RNF2.1 - Linguaggio}: Java 17 (LTS) o superiore
+    \item \textbf{RNF2.2 - Framework Backend}: Spring Boot 3.5.5 con:
+    \begin{itemize}
+        \item Spring Web (MVC, REST)
+        \item Spring Data JPA (ORM, Repository Pattern)
+        \item Spring Boot Actuator (monitoring)
+        \item Spring Boot DevTools (hot reload)
+    \end{itemize}
+    \item \textbf{RNF2.3 - Database}:
+    \begin{itemize}
+        \item Development: H2 in-memory (jdbc:h2:mem:padeldb)
+        \item Production: Compatibile con MySQL/PostgreSQL (cambio dialect)
+    \end{itemize}
+    \item \textbf{RNF2.4 - ORM}: Hibernate 6.6.26 (implementazione JPA)
+    \item \textbf{RNF2.5 - Frontend}: Thymeleaf 3.x template engine con HTML5/CSS3
+    \item \textbf{RNF2.6 - Build Tool}: Maven 3.9.x con pom.xml standardizzato
+    \item \textbf{RNF2.7 - Security Library}: Spring Security Crypto per BCrypt password hashing
+\end{itemize}
+
+\subsubsection{RNF3 - Requisiti di Qualità}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RNF3.1 - Test Coverage}: La code coverage dei test di unità DEVE essere $\geq$ 80\% (linee di codice)
+    \begin{itemize}
+        \item Misurata con JaCoCo Maven Plugin
+        \item Report generato con: \texttt{mvn clean test jacoco:report}
+        \item Build fallisce se coverage < 80\% (configurazione jacoco-check)
+    \end{itemize}
+    \textbf{Verificabile}: Report JaCoCo in \texttt{target/site/jacoco/index.html}
+
+    \item \textbf{RNF3.2 - Documentazione Codice}: Tutte le classi pubbliche e metodi DEVONO avere Javadoc con:
+    \begin{itemize}
+        \item Descrizione funzionalità
+        \item @param per parametri
+        \item @return per valori ritornati
+        \item @throws per eccezioni
+        \item Note implementative e riferimenti a design pattern dove applicabile
+    \end{itemize}
+    \textbf{Verificabile}: Ispezione codice sorgente, generazione Javadoc con \texttt{mvn javadoc:javadoc}
+
+    \item \textbf{RNF3.3 - Gestione Eccezioni}: Le eccezioni DEVONO essere gestite in modo appropriato:
+    \begin{itemize}
+        \item Eccezioni checked catturate e gestite
+        \item Messaggi di errore significativi per l'utente
+        \item Logging errori con SLF4J (Lombok @Slf4j)
+        \item Rollback transazioni su errore (Spring @Transactional)
+    \end{itemize}
+
+    \item \textbf{RNF3.4 - Naming Conventions}: DEVE seguire Java naming conventions:
+    \begin{itemize}
+        \item Classi: PascalCase (es. MatchService, UserRepository)
+        \item Metodi/variabili: camelCase (es. createMatch, currentUser)
+        \item Costanti: UPPER\_SNAKE\_CASE (es. MAX\_PLAYERS = 4)
+        \item Package: lowercase (es. com.example.padel\_app.service)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{RNF4 - Requisiti di Performance}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RNF4.1 - Tempo di Risposta}: Le operazioni CRUD DEVONO completarsi in $<$ 500ms (ambiente development locale)
+
+    \item \textbf{RNF4.2 - Query Ottimizzate}: DEVE utilizzare JOIN FETCH per evitare problema N+1 queries:
+    \begin{lstlisting}[caption={Esempio Query Ottimizzata}]
+@Query("SELECT m FROM Match m LEFT JOIN FETCH m.creator")
+List<Match> findAllWithCreator();
+    \end{lstlisting}
+
+    \item \textbf{RNF4.3 - Lazy Loading}: Relazioni @OneToMany DEVONO usare FetchType.LAZY per default, con eager loading esplicito solo quando necessario
+
+    \item \textbf{RNF4.4 - Transazionalità}: Service methods che modificano dati DEVONO essere @Transactional. Read-only queries DOVREBBERO usare @Transactional(readOnly=true) per ottimizzazione.
+\end{itemize}
+
+\subsubsection{RNF5 - Requisiti di Sicurezza}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{RNF5.1 - Password Hashing}: Password DEVONO essere hashate con BCrypt (strength $\geq$ 10 rounds) prima del salvataggio. MAI salvare password in chiaro.
+    \begin{lstlisting}[caption={Implementazione BCrypt}]
+@Bean
+public BCryptPasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder(10);
+}
+    \end{lstlisting}
+
+    \item \textbf{RNF5.2 - Validazione Input}: Tutti gli input utente DEVONO essere validati:
+    \begin{itemize}
+        \item Lato server con Jakarta Bean Validation (@NotBlank, @Email, @NotNull)
+        \item Sanitizzazione input per prevenire XSS
+    \end{itemize}
+
+    \item \textbf{RNF5.3 - Protezione SQL Injection}: DEVE utilizzare prepared statements via JPA/Hibernate. MAI concatenare stringhe per query SQL.
+
+    \item \textbf{RNF5.4 - Gestione Sessioni}:
+    \begin{itemize}
+        \item Sessioni HTTP con timeout configurabile
+        \item Invalidazione sessione al logout
+        \item Protezione endpoint con verifica sessione
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 3: PROGETTAZIONE ==========
+\section{Progettazione del Sistema}
+
+\subsection{Architettura Generale}
+
+L'applicazione segue un'architettura \textbf{Model-View-Controller (MVC)} stratificata, pattern architetturale consolidato per applicazioni web enterprise. L'architettura è organizzata in 5 layer verticali che comunicano in modo unidirezionale dall'alto verso il basso.
+
+\subsubsection{Layer Architetturali}
+
+\begin{figure}[H]
+    \centering
+    \begin{verbatim}
+┌─────────────────────────────────────────────────┐
+│         PRESENTATION LAYER (View)               │
+│  Thymeleaf Templates (.html)                    │
+│  - index.html, matches.html, my-profile.html    │
+└─────────────────────────────────────────────────┘
+                    ↓ HTTP Request
+┌─────────────────────────────────────────────────┐
+│         CONTROLLER LAYER                        │
+│  WebController, AuthController                  │
+│  - Gestione richieste HTTP (GET/POST)           │
+│  - Validazione input                            │
+│  - Coordinamento chiamate service               │
+└─────────────────────────────────────────────────┘
+                    ↓ Method Call
+┌─────────────────────────────────────────────────┐
+│         SERVICE LAYER (Business Logic)          │
+│  MatchService, UserService, FeedbackService     │
+│  - Logica applicativa                           │
+│  - Gestione transazioni                         │
+│  - Pubblicazione eventi (Observer Pattern)      │
+│  - Selezione strategie (Strategy Pattern)       │
+└─────────────────────────────────────────────────┘
+                    ↓ Repository Call
+┌─────────────────────────────────────────────────┐
+│         REPOSITORY LAYER (Data Access)          │
+│  MatchRepository, UserRepository (JPA)          │
+│  - Astrazione accesso dati                      │
+│  - Query JPQL/SQL                               │
+└─────────────────────────────────────────────────┘
+                    ↓ JPA/Hibernate
+┌─────────────────────────────────────────────────┐
+│         MODEL LAYER (Domain Entities)           │
+│  User, Match, Registration, Feedback            │
+│  - Mappatura ORM (JPA annotations)              │
+│  - Business rules (metodi helper)               │
+└─────────────────────────────────────────────────┘
+                    ↓ JDBC
+┌─────────────────────────────────────────────────┐
+│         DATABASE (H2 / MySQL / PostgreSQL)      │
+└─────────────────────────────────────────────────┘
+    \end{verbatim}
+    \caption{Architettura Layered - Flusso Verticale}
+\end{figure}
+
+\textbf{Principio fondamentale}: Ogni layer dipende solo dal layer immediatamente sottostante. Benefici:
+
+\begin{itemize}
+    \item \textbf{Separation of Concerns}: Ogni layer ha una responsabilità specifica
+    \item \textbf{Testabilità}: Ogni layer può essere testato isolatamente con mock
+    \item \textbf{Manutenibilità}: Modifiche a un layer non impattano gli altri
+    \item \textbf{Riusabilità}: Service layer può essere esposto sia via Web UI che via REST API
+\end{itemize}
+
+\subsubsection{Flusso di una Richiesta Tipica}
+
+Esempio: Utente si iscrive a una partita (RF2.2)
+
+\begin{enumerate}
+    \item \textbf{View}: Utente clicca pulsante ``Iscriviti'' su \texttt{matches.html}
+
+    \item \textbf{Controller}: \texttt{WebController.joinMatch(matchId)} riceve POST request
+    \begin{itemize}
+        \item Recupera \texttt{currentUser} da sessione HTTP
+        \item Valida parametri input
+    \end{itemize}
+
+    \item \textbf{Service}: \texttt{MatchService.joinMatch(matchId, userId)}
+    \begin{itemize}
+        \item Verifica business rules (partita non piena, utente non già iscritto)
+        \item Crea Registration via \texttt{RegistrationService}
+        \item Se 4 giocatori: pubblica \texttt{MatchConfirmedEvent} (Observer Pattern)
+    \end{itemize}
+
+    \item \textbf{Repository}: \texttt{MatchRepository.save(match)}, \texttt{RegistrationRepository.save(registration)}
+
+    \item \textbf{Model}: Hibernate genera SQL INSERT/UPDATE
+
+    \item \textbf{Database}: Persistenza dati nelle tabelle \texttt{matches}, \texttt{registrations}
+
+    \item \textbf{Observer (asincrono)}: \texttt{MatchEventListener} riceve evento e chiama \texttt{NotificationService}
+
+    \item \textbf{Risposta}: Controller ritorna redirect a \texttt{/matches} con messaggio flash ``Iscrizione completata!''
+\end{enumerate}
+
+\subsection{Diagrammi UML}
+
+I seguenti diagrammi UML rappresentano la struttura statica e dinamica del sistema. Tutti i diagrammi sono stati generati con PlantUML e corrispondono esattamente al codice implementato.
+
+\subsubsection{Use Case Diagram}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Use Case Diagram - App Padel.png}
+    \caption{Use Case Diagram - Sistema Gestione Partite Padel}
+    \label{fig:usecase}
+\end{figure}
+
+\textbf{Discussione Use Case Diagram}:
+
+Il diagramma identifica 2 attori principali e 15 casi d'uso organizzati in 4 aree funzionali.
+
+\textbf{Attori}:
+\begin{itemize}
+    \item \textbf{Giocatore}: Utente registrato che interagisce attivamente con il sistema (creazione partite, iscrizioni, feedback)
+    \item \textbf{Sistema}: Componente automatica che gestisce processi asincroni (conferme, notifiche, calcolo livelli)
+\end{itemize}
+
+\textbf{Casi d'Uso per Area}:
+
+\begin{enumerate}
+    \item \textbf{Autenticazione} (3 UC):
+    \begin{itemize}
+        \item UC1: Registra Utente - creazione nuovo account con BCrypt hashing
+        \item UC2: Login - autenticazione session-based
+        \item UC3: Logout - invalidazione sessione HTTP
+    \end{itemize}
+
+    \item \textbf{Gestione Partite} (6 UC):
+    \begin{itemize}
+        \item UC4: Crea Partita - specifica luogo, data, livello
+        \item UC5: Join Partita - iscrizione se $<$ 4 giocatori
+        \item UC6: Abbandona Partita - solo se stato = WAITING
+        \item UC7: Visualizza Partite - lista con dati creator
+        \item UC8: Filtra Partite - per status/level
+        \item UC9: Ordina Partite - \textbf{Strategy Pattern} (date/popularity/level)
+    \end{itemize}
+
+    \item \textbf{Feedback} (2 UC):
+    \begin{itemize}
+        \item UC10: Fornisci Feedback - valutazione post-partita
+        \item UC11: Visualizza Community - lista utenti con statistiche
+    \end{itemize}
+
+    \item \textbf{Processi Sistema} (4 UC):
+    \begin{itemize}
+        \item UC12: Conferma Partita - \textbf{Observer Pattern} (auto-trigger al 4° iscritto)
+        \item UC13: Termina Partita - cambio stato CONFIRMED → FINISHED
+        \item UC14: Invia Notifiche - \textbf{Singleton Pattern} (NotificationService)
+        \item UC15: Aggiorna Livello Percepito - calcolo media feedback
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Relazioni tra Use Cases}:
+
+\begin{itemize}
+    \item \textbf{<<include>>}: UC5 (Join) include UC12 (Conferma) - quando si raggiungono 4 iscritti, la conferma è automatica
+    \item \textbf{<<extend>>}: UC7 (Visualizza) estende UC8 (Filtra) e UC9 (Ordina) - funzionalità opzionali
+    \item \textbf{<<trigger>>}: UC12 (Conferma) trigger UC14 (Notifiche) - evento asincrono
+\end{itemize}
+
+\textbf{Note sul Design}:
+
+Il Use Case UC9 (Ordina Partite) evidenzia l'applicazione dello \textit{Strategy Pattern}: l'utente può scegliere tra 3 algoritmi di ordinamento intercambiabili (DateSortingStrategy, PopularitySortingStrategy, LevelSortingStrategy) senza che il sistema debba essere modificato.
+
+Il Use Case UC12 (Conferma Automatica) dimostra l'\textit{Observer Pattern}: quando una partita raggiunge 4 giocatori, viene pubblicato un \texttt{MatchConfirmedEvent} che viene ascoltato da \texttt{MatchEventListener}, il quale delega a \texttt{NotificationService} (Singleton) per inviare le notifiche.
+
+\newpage
+
+\subsubsection{Class Diagram - Overview Packages}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Class Diagram - Overview Packages.png}
+    \caption{Class Diagram - Organizzazione Packages}
+    \label{fig:packages}
+\end{figure}
+
+\textbf{Discussione Package Structure}:
+
+Il progetto segue la struttura standard Spring Boot organizzata per \textit{layer} e \textit{responsabilità}:
+
+\begin{description}[leftmargin=4cm, style=nextline]
+    \item[\texttt{model}] Entità JPA del dominio: User, Match, Registration, Feedback + enum (Level, MatchStatus, MatchType, RegistrationStatus)
+
+    \item[\texttt{repository}] Interfacce di accesso dati che estendono JpaRepository: UserRepository, MatchRepository, RegistrationRepository, FeedbackRepository. Incapsulano query JPQL custom.
+
+    \item[\texttt{service}] Logica business: MatchService, UserService, FeedbackService, RegistrationService, UserSessionService, NotificationService. Annotati con @Service e @Transactional.
+
+    \item[\texttt{controller}] Gestione richieste HTTP: WebController (endpoint protetti), AuthController (login/register). Annotati con @Controller.
+
+    \item[\texttt{strategy}] Implementazione Strategy Pattern: interfaccia MatchSortingStrategy + 3 concrete strategies (DateSorting, PopularitySorting, LevelSorting).
+
+    \item[\texttt{event}] Eventi Observer Pattern: MatchConfirmedEvent, MatchFinishedEvent estendono ApplicationEvent di Spring.
+
+    \item[\texttt{listener}] Observer Pattern: MatchEventListener con @EventListener che ascolta eventi e chiama NotificationService.
+
+    \item[\texttt{config}] Configurazione applicativa: SecurityConfig (BCryptPasswordEncoder bean), DataSeeder (popolamento DB con dati demo).
+\end{description}
+
+\textbf{Dipendenze tra Package}:
+
+\begin{itemize}
+    \item Controller $\rightarrow$ Service: WebController dipende da MatchService, UserService, etc.
+    \item Service $\rightarrow$ Repository: MatchService dipende da MatchRepository
+    \item Service $\rightarrow$ Model: Tutti i service manipolano entità (User, Match, etc.)
+    \item Service $\rightarrow$ Event: MatchService pubblica MatchConfirmedEvent
+    \item Listener $\rightarrow$ Event: MatchEventListener ascolta MatchConfirmedEvent
+    \item Listener $\rightarrow$ Service: MatchEventListener chiama NotificationService
+    \item Service $\rightarrow$ Strategy: MatchService inietta Map<String, MatchSortingStrategy>
+\end{itemize}
+
+\textbf{Principio applicato}: \textit{Acyclic Dependencies Principle} - nessuna dipendenza circolare tra package. Il grafo delle dipendenze è un DAG (Directed Acyclic Graph).
+
+\newpage
+
+\subsubsection{Class Diagram - Model Layer}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Class Diagram - Model Layer.png}
+    \caption{Class Diagram - Entità JPA (Model Layer)}
+    \label{fig:model}
+\end{figure}
+
+\textbf{Discussione Model Layer}:
+
+Il Model Layer è composto da 4 entità JPA che rappresentano il dominio applicativo e 4 enumerazioni che definiscono valori ammessi per determinati campi.
+
+\textbf{Entità Principali}:
+
+\begin{enumerate}
+    \item \textbf{User} (rappresenta un giocatore di padel):
+    \begin{itemize}
+        \item \textit{Attributi identificativi}: id (PK), username (unique), email (unique)
+        \item \textit{Sicurezza}: password (hashata BCrypt)
+        \item \textit{Dati anagrafici}: firstName, lastName
+        \item \textit{Livelli}: declaredLevel (auto-dichiarato), perceivedLevel (calcolato da feedback)
+        \item \textit{Statistiche}: matchesPlayed (contatore partite giocate)
+        \item \textit{Relazioni}:
+        \begin{itemize}
+            \item \texttt{registrations}: List<Registration> - partite a cui è iscritto (@OneToMany, mappedBy="user")
+            \item \texttt{givenFeedbacks}: List<Feedback> - feedback dati ad altri (@OneToMany, mappedBy="author")
+            \item \texttt{receivedFeedbacks}: List<Feedback> - feedback ricevuti (@OneToMany, mappedBy="targetUser")
+        \end{itemize}
+    \end{itemize}
+
+    \item \textbf{Match} (rappresenta una partita di padel 2vs2):
+    \begin{itemize}
+        \item \textit{Attributi tipo/stato}: type (FIXED/PROPOSED), status (WAITING/CONFIRMED/FINISHED)
+        \item \textit{Dettagli partita}: location, dateTime, requiredLevel (livello minimo), description
+        \item \textit{Timestamp}: createdAt (audit trail)
+        \item \textit{Relazioni}:
+        \begin{itemize}
+            \item \texttt{creator}: User - chi ha creato la partita (@ManyToOne, FK=creator\_id)
+            \item \texttt{registrations}: List<Registration> - giocatori iscritti (@OneToMany, mappedBy="match")
+            \item \texttt{feedbacks}: List<Feedback> - valutazioni post-partita (@OneToMany, mappedBy="match")
+        \end{itemize}
+        \item \textit{Metodi business logic}:
+        \begin{itemize}
+            \item \texttt{getActiveRegistrationsCount()}: conta iscritti con status=JOINED
+            \item \texttt{isFull()}: verifica se partita ha 4 giocatori (usato per bloccare nuove iscrizioni)
+        \end{itemize}
+    \end{itemize}
+
+    \item \textbf{Registration} (entità di join User-Match):
+    \begin{itemize}
+        \item Implementa relazione Many-to-Many tra User e Match con attributi aggiuntivi
+        \item \textit{Attributi}: user (@ManyToOne), match (@ManyToOne), status (JOINED/CANCELLED), registeredAt
+        \item Permette di tracciare \textit{quando} e \textit{chi} si è iscritto
+        \item Unique constraint: (user\_id, match\_id) - un utente non può iscriversi 2 volte alla stessa partita
+    \end{itemize}
+
+    \item \textbf{Feedback} (valutazione post-partita):
+    \begin{itemize}
+        \item \textit{Relazioni}:
+        \begin{itemize}
+            \item \texttt{author}: User - chi dà il feedback (@ManyToOne)
+            \item \texttt{targetUser}: User - chi riceve il feedback (@ManyToOne)
+            \item \texttt{match}: Match - partita di riferimento (@ManyToOne)
+        \end{itemize}
+        \item \textit{Attributi}: suggestedLevel (livello valutato), comment (opzionale), createdAt
+        \item Unique constraint: (author\_id, target\_user\_id, match\_id) - un feedback per coppia per partita
+        \item Utilizzato per calcolare User.perceivedLevel (media feedback ricevuti)
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Enumerazioni}:
+
+\begin{enumerate}
+    \item \textbf{Level}: PRINCIPIANTE, INTERMEDIO, AVANZATO, PROFESSIONISTA
+    \item \textbf{MatchType}: PROPOSED (data flessibile), FIXED (data fissa)
+    \item \textbf{MatchStatus}: WAITING (0-3 giocatori), CONFIRMED (4 giocatori), FINISHED (partita conclusa)
+    \item \textbf{RegistrationStatus}: JOINED (attivo), CANCELLED (abbandonato)
+\end{enumerate}
+
+\textbf{Cardinalità Relazioni}:
+
+\begin{itemize}
+    \item User (1) $\leftrightarrow$ (N) Registration: Un utente può iscriversi a molte partite
+    \item Match (1) $\leftrightarrow$ (N) Registration: Una partita ha molti iscritti (max 4 JOINED)
+    \item User (1) $\leftrightarrow$ (N) Match (via creator): Un utente può creare molte partite
+    \item Match (1) $\leftrightarrow$ (N) Feedback: Una partita può avere molti feedback (max 12: 4 giocatori $\times$ 3 valutazioni ciascuno)
+    \item User (1) $\leftrightarrow$ (N) Feedback (as author): Un utente può dare molti feedback
+    \item User (1) $\leftrightarrow$ (N) Feedback (as targetUser): Un utente può ricevere molti feedback
+\end{itemize}
+
+\textbf{Business Rules Implementate}:
+
+\begin{enumerate}
+    \item \textit{Massimo 4 giocatori per partita}: Verificato in MatchService.joinMatch() con \texttt{if (match.getActiveRegistrationsCount() >= 4)}
+
+    \item \textit{Auto-conferma al 4° iscritto}: Quando count=4, \texttt{match.status = CONFIRMED} e viene pubblicato \texttt{MatchConfirmedEvent}
+
+    \item \textit{Unicità feedback}: Constraint DB impedisce feedback duplicati per (author, target, match)
+
+    \item \textit{Feedback solo per partite FINISHED}: Validato in WebController.createFeedback()
+
+    \item \textit{Abbandono solo per partite WAITING}: Validato in MatchService.leaveMatch()
+\end{enumerate}
+
+\newpage
+
+\subsubsection{Class Diagram - Service Layer}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Class Diagram - Service Layer.png}
+    \caption{Class Diagram - Service Layer (Business Logic)}
+    \label{fig:service}
+\end{figure}
+
+\textbf{Discussione Service Layer}:
+
+Il Service Layer implementa la business logic del sistema. Ogni service è annotato con \texttt{@Service} (singleton Spring) e \texttt{@Transactional} per gestione transazioni atomiche.
+
+\textbf{Servizi Principali}:
+
+\begin{enumerate}
+    \item \textbf{MatchService} (cuore del sistema):
+    \begin{itemize}
+        \item \textit{Responsabilità}: CRUD partite, gestione lifecycle (WAITING → CONFIRMED → FINISHED)
+        \item \textit{Design Pattern}:
+        \begin{itemize}
+            \item \textbf{Strategy Pattern}: Inietta \texttt{Map<String, MatchSortingStrategy>} per ordinamento dinamico
+            \item \textbf{Observer Pattern}: Pubblica eventi \texttt{MatchConfirmedEvent}, \texttt{MatchFinishedEvent} via \texttt{ApplicationEventPublisher}
+        \end{itemize}
+        \item \textit{Metodi chiave}:
+        \begin{itemize}
+            \item \texttt{createMatch()}: Crea partita + prima registration per creator
+            \item \texttt{joinMatch()}: Iscrizione + verifica vincoli + auto-conferma se count=4
+            \item \texttt{leaveMatch()}: Abbandono solo se WAITING
+            \item \texttt{finishMatch()}: CONFIRMED → FINISHED + incremento matchesPlayed + evento
+            \item \texttt{getMatchesSorted(sortType)}: Selezione strategia e ordinamento
+        \end{itemize}
+        \item \textit{Dipendenze}: MatchRepository, RegistrationRepository, UserRepository, ApplicationEventPublisher, Map<MatchSortingStrategy>
+    \end{itemize}
+
+    \item \textbf{RegistrationService}:
+    \begin{itemize}
+        \item \textit{Responsabilità}: Gestione iscrizioni (creazione, cancellazione)
+        \item \textit{Metodi}: createRegistration(), cancelRegistration(), getActiveRegistrations()
+        \item \textit{Dipendenze}: RegistrationRepository
+    \end{itemize}
+
+    \item \textbf{FeedbackService}:
+    \begin{itemize}
+        \item \textit{Responsabilità}: Gestione feedback e calcolo livello percepito
+        \item \textit{Metodi chiave}:
+        \begin{itemize}
+            \item \texttt{createFeedback()}: Salva feedback + chiama updatePerceivedLevel()
+            \item \texttt{updatePerceivedLevel(targetUser)}: Calcola media feedback ricevuti
+        \end{itemize}
+        \item \textit{Algoritmo calcolo livello}:
+        \begin{lstlisting}[caption={Calcolo Livello Percepito}]
+List<Feedback> feedbacks = user.getReceivedFeedbacks();
+double avg = feedbacks.stream()
+    .mapToInt(f -> f.getSuggestedLevel().ordinal() + 1)
+    .average()
+    .orElse(0);
+Level perceivedLevel = Level.values()[(int)Math.round(avg) - 1];
+user.setPerceivedLevel(perceivedLevel);
+        \end{lstlisting}
+        \item \textit{Dipendenze}: FeedbackRepository, UserRepository
+    \end{itemize}
+
+    \item \textbf{UserService}:
+    \begin{itemize}
+        \item \textit{Responsabilità}: CRUD utenti, gestione registrazione
+        \item \textit{Metodi}: createUser(), findByEmail(), findByUsername(), getAllUsers()
+        \item \textit{Dipendenze}: UserRepository, BCryptPasswordEncoder
+    \end{itemize}
+
+    \item \textbf{UserSessionService}:
+    \begin{itemize}
+        \item \textit{Responsabilità}: Gestione sessioni HTTP
+        \item \textit{Metodi}:
+        \begin{itemize}
+            \item \texttt{saveUserToSession(user, session)}: Salva User in HttpSession
+            \item \texttt{getCurrentUser(session)}: Recupera User da sessione
+            \item \texttt{logout(session)}: Invalida sessione
+        \end{itemize}
+        \item \textit{Scope}: @Service con scope singleton (ma opera su sessioni multiple)
+    \end{itemize}
+
+    \item \textbf{NotificationService} (Singleton Pattern esplicito):
+    \begin{itemize}
+        \item \textit{Responsabilità}: Invio notifiche centralizzato
+        \item \textit{Pattern}: Singleton via \texttt{@Scope("singleton")} + stato condiviso
+        \item \textit{Metodi}:
+        \begin{itemize}
+            \item \texttt{sendMatchConfirmedNotification(match)}: Log conferma partita
+            \item \texttt{sendMatchFinishedNotification(match)}: Log termine partita
+            \item \texttt{getAllNotifications()}: Recupera storico notifiche
+        \end{itemize}
+        \item \textit{Stato interno}: \texttt{List<String> notifications} - log centralizzato
+        \item \textit{Estendibilità}: Può essere esteso con EmailService, SMSService come nuovi Observer
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Gestione Transazioni}:
+
+Tutti i service usano \texttt{@Transactional} di Spring per garantire atomicità:
+
+\begin{lstlisting}[caption={Esempio Transazionalità}]
+@Service
+@Transactional(readOnly = true)  // Default per query SELECT
+public class MatchService {
+
+    @Transactional  // Override: read-write transaction
+    public Registration joinMatch(Long matchId, Long userId) {
+        // ... logica ...
+        // Se eccezione: rollback automatico
+        // Altrimenti: commit al termine metodo
+    }
+
+    // Metodo con readOnly=true (ottimizzazione)
+    public List<Match> getAllMatches() {
+        return matchRepository.findAllWithCreator();
+    }
+}
+\end{lstlisting}
+
+\textbf{Livelli di Isolamento}: Spring usa ISOLATION\_DEFAULT (di solito READ\_COMMITTED) che previene dirty reads ma permette phantom reads. Adeguato per questo dominio applicativo.
+
+\newpage
+
+\subsubsection{Class Diagram - Repository Layer}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Class Diagram - Repository Layer.png}
+    \caption{Class Diagram - Repository Layer (Data Access)}
+    \label{fig:repository}
+\end{figure}
+
+\textbf{Discussione Repository Layer}:
+
+Il Repository Layer astrae l'accesso ai dati utilizzando il \textit{Repository Pattern} fornito da Spring Data JPA. Ogni repository è un'interfaccia che estende \texttt{JpaRepository<Entity, ID>}.
+
+\textbf{Vantaggi Spring Data JPA}:
+
+\begin{itemize}
+    \item CRUD automatici (save, findById, findAll, delete, etc.) senza scrivere codice
+    \item Query derivate da nome metodo (es. \texttt{findByEmail} $\rightarrow$ \texttt{SELECT * FROM users WHERE email = ?})
+    \item Query custom con @Query JPQL
+    \item Paginazione e sorting built-in
+    \item Gestione transazioni integrata
+\end{itemize}
+
+\textbf{Repository Implementati}:
+
+\begin{enumerate}
+    \item \textbf{UserRepository extends JpaRepository<User, Long>}:
+    \begin{itemize}
+        \item \textit{Query derivate}:
+        \begin{lstlisting}
+Optional<User> findByEmail(String email);
+Optional<User> findByUsername(String username);
+        \end{lstlisting}
+        \item \textit{Utilizzo}: Login (findByEmail), verifica unicità (findByUsername)
+    \end{itemize}
+
+    \item \textbf{MatchRepository extends JpaRepository<Match, Long>}:
+    \begin{itemize}
+        \item \textit{Query custom con JOIN FETCH} (ottimizzazione N+1):
+        \begin{lstlisting}
+@Query("SELECT m FROM Match m LEFT JOIN FETCH m.creator")
+List<Match> findAllWithCreator();
+
+@Query("SELECT m FROM Match m " +
+       "LEFT JOIN FETCH m.creator " +
+       "LEFT JOIN FETCH m.registrations")
+List<Match> findAllWithDetails();
+        \end{lstlisting}
+        \item \textit{Problema risolto}: Senza JOIN FETCH, Hibernate esegue 1 query per lista match + N query per caricare ogni creator (problema N+1). Con JOIN FETCH: 1 sola query con JOIN.
+
+        \item \textit{Query derivate}:
+        \begin{lstlisting}
+List<Match> findByStatus(MatchStatus status);
+List<Match> findByRequiredLevel(Level level);
+List<Match> findByDateTimeBefore(LocalDateTime dateTime);
+        \end{lstlisting}
+        \item \textit{Utilizzo}: Filtri in /matches, cleanup partite scadute
+    \end{itemize}
+
+    \item \textbf{RegistrationRepository extends JpaRepository<Registration, Long>}:
+    \begin{itemize}
+        \item \textit{Query custom per conteggio efficiente}:
+        \begin{lstlisting}
+@Query("SELECT COUNT(r) FROM Registration r " +
+       "WHERE r.match = :match AND r.status = 'JOINED'")
+int countActiveRegistrationsByMatch(@Param("match") Match match);
+        \end{lstlisting}
+        \item \textit{Vantaggio}: Query COUNT diretta senza caricare intere collection
+
+        \item \textit{Query derivate}:
+        \begin{lstlisting}
+List<Registration> findByMatch(Match match);
+List<Registration> findByUser(User user);
+Optional<Registration> findByUserAndMatch(User user, Match match);
+        \end{lstlisting}
+        \item \textit{Utilizzo}: Verifica iscrizione esistente, lista iscritti
+    \end{itemize}
+
+    \item \textbf{FeedbackRepository extends JpaRepository<Feedback, Long>}:
+    \begin{itemize}
+        \item \textit{Query derivate}:
+        \begin{lstlisting}
+List<Feedback> findByTargetUser(User targetUser);
+List<Feedback> findByMatch(Match match);
+Optional<Feedback> findByAuthorAndTargetUserAndMatch(
+    User author, User targetUser, Match match
+);
+        \end{lstlisting}
+        \item \textit{Utilizzo}:
+        \begin{itemize}
+            \item \texttt{findByTargetUser}: Calcolo livello percepito (media feedback ricevuti)
+            \item \texttt{findByMatch}: Feedback per partita specifica
+            \item \texttt{findByAuthorAndTargetUserAndMatch}: Verifica unicità feedback
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Esempio Query JPQL con JOIN FETCH}:
+
+\begin{lstlisting}[caption={Ottimizzazione N+1 Queries}]
+// ❌ APPROCCIO NAIVE (problema N+1):
+List<Match> matches = matchRepository.findAll();
+for (Match m : matches) {
+    String creator = m.getCreator().getUsername();
+    // Lazy load: 1 query per ogni creator! (N query)
+}
+// Totale: 1 + N query
+
+// ✅ APPROCCIO OTTIMIZZATO (JOIN FETCH):
+@Query("SELECT m FROM Match m LEFT JOIN FETCH m.creator")
+List<Match> findAllWithCreator();
+
+List<Match> matches = matchRepository.findAllWithCreator();
+for (Match m : matches) {
+    String creator = m.getCreator().getUsername();
+    // Creator già caricato, 0 query aggiuntive
+}
+// Totale: 1 query
+\end{lstlisting}
+
+\textbf{Gestione Eccezioni JPA}:
+
+Spring traduce automaticamente eccezioni JPA/Hibernate in eccezioni Spring:
+
+\begin{itemize}
+    \item \texttt{EntityNotFoundException} $\rightarrow$ \texttt{EmptyResultDataAccessException}
+    \item \texttt{ConstraintViolationException} (unique constraint) $\rightarrow$ \texttt{DataIntegrityViolationException}
+\end{itemize}
+
+Gestite nei service con try-catch e messaggi user-friendly.
+
+\newpage
+
+\subsubsection{Class Diagram - Design Patterns}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Class Diagram - Design Patterns.png}
+    \caption{Class Diagram - Design Patterns Implementati}
+    \label{fig:patterns}
+\end{figure}
+
+\textbf{Discussione Design Patterns}:
+
+Questo diagramma evidenzia i 3 design patterns implementati nel progetto, con particolare focus su struttura e relazioni tra classi.
+
+\textbf{1. Observer Pattern} (area superiore del diagramma):
+
+\textit{Partecipanti}:
+\begin{itemize}
+    \item \textbf{Subject (Publisher)}: MatchService
+    \item \textbf{Events}: MatchConfirmedEvent, MatchFinishedEvent (estendono ApplicationEvent)
+    \item \textbf{Observer}: MatchEventListener (annotato @Component)
+    \item \textbf{Action}: NotificationService (Singleton)
+\end{itemize}
+
+\textit{Flusso}:
+\begin{enumerate}
+    \item MatchService.joinMatch() rileva 4 giocatori
+    \item Pubblica evento: \texttt{eventPublisher.publishEvent(new MatchConfirmedEvent(match))}
+    \item Spring Event System notifica tutti @EventListener
+    \item MatchEventListener.handleMatchConfirmed(event) viene invocato
+    \item Listener chiama NotificationService.sendMatchConfirmedNotification(match)
+\end{enumerate}
+
+\textit{Benefici}:
+\begin{itemize}
+    \item \textbf{Disaccoppiamento}: MatchService non conosce MatchEventListener
+    \item \textbf{Estendibilità}: Facile aggiungere EmailListener, SMSListener senza modificare MatchService
+    \item \textbf{Open/Closed Principle}: Aperto a nuovi observer, chiuso a modifiche
+\end{itemize}
+
+\textbf{2. Strategy Pattern} (area centrale del diagramma):
+
+\textit{Partecipanti}:
+\begin{itemize}
+    \item \textbf{Strategy Interface}: MatchSortingStrategy
+    \item \textbf{Concrete Strategies}:
+    \begin{itemize}
+        \item DateSortingStrategy: ordina per dateTime ASC
+        \item PopularitySortingStrategy: ordina per activeRegistrationsCount DESC
+        \item LevelSortingStrategy: ordina per requiredLevel ASC
+    \end{itemize}
+    \item \textbf{Context}: MatchService
+\end{itemize}
+
+\textit{Dependency Injection Automatica}:
+\begin{lstlisting}[caption={Spring Auto-Injection di Strategie}]
+@Service
+public class MatchService {
+    // Spring inietta tutte le implementazioni in una Map
+    private final Map<String, MatchSortingStrategy> sortingStrategies;
+
+    public List<Match> getMatchesSorted(String sortType) {
+        MatchSortingStrategy strategy =
+            sortingStrategies.get(sortType + "Sorting");
+        return strategy.sort(matchRepository.findAll());
+    }
+}
+
+// Implementazioni:
+@Component("dateSorting")
+public class DateSortingStrategy implements MatchSortingStrategy { }
+
+@Component("popularitySorting")
+public class PopularitySortingStrategy implements MatchSortingStrategy { }
+
+@Component("levelSorting")
+public class LevelSortingStrategy implements MatchSortingStrategy { }
+\end{lstlisting}
+
+\textit{Benefici}:
+\begin{itemize}
+    \item \textbf{Algoritmi intercambiabili}: Cambio strategia a runtime senza modificare client
+    \item \textbf{Eliminazione if-else}: Nessun codice condizionale per selezionare algoritmo
+    \item \textbf{Testabilità}: Ogni strategia testabile in isolamento
+\end{itemize}
+
+\textbf{3. Singleton Pattern} (area inferiore del diagramma):
+
+\textit{Implementazione}:
+\begin{lstlisting}[caption={Singleton via Spring}]
+@Service
+@Scope("singleton")  // Esplicito (default in Spring)
+public class NotificationService {
+
+    // Stato condiviso tra tutti i client
+    private final List<String> notifications = new ArrayList<>();
+
+    public void sendMatchConfirmedNotification(Match match) {
+        String msg = "Partita CONFERMATA! " + match.getLocation();
+        notifications.add(msg);
+        log.info(msg);
+    }
+
+    public List<String> getAllNotifications() {
+        return notifications;
+    }
+}
+\end{lstlisting}
+
+\textit{Caratteristiche}:
+\begin{itemize}
+    \item \textbf{Istanza unica}: Spring crea 1 sola istanza nel container
+    \item \textbf{Stato condiviso}: Lista notifications accessibile da tutti gli Observer
+    \item \textbf{Thread-safe}: Spring garantisce sincronizzazione creazione bean
+\end{itemize}
+
+\textit{Utilizzo}:
+\begin{itemize}
+    \item MatchEventListener inietta NotificationService
+    \item Ogni evento triggera sendNotification() sulla stessa istanza
+    \item Log centralizzato di tutte le notifiche
+\end{itemize}
+
+\textit{Estendibilità}:
+In produzione, NotificationService può coordinare:
+\begin{itemize}
+    \item EmailService per notifiche email
+    \item SMSService per notifiche SMS
+    \item PushNotificationService per notifiche mobile
+\end{itemize}
+
+\newpage
+
+\subsubsection{Sequence Diagram - Observer Pattern}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Observer Pattern - Sequence Diagram.png}
+    \caption{Sequence Diagram - Join Partita con Conferma Automatica (Observer Pattern)}
+    \label{fig:seq_observer}
+\end{figure}
+
+\textbf{Discussione Sequence Diagram Observer Pattern}:
+
+Questo diagramma mostra il flusso completo di una iscrizione a partita che trigger la conferma automatica al raggiungimento del quarto giocatore.
+
+\textbf{Flusso Dettagliato}:
+
+\begin{enumerate}
+    \item \textbf{User Action}: Il 4° giocatore clicca ``Iscriviti'' su una partita in stato WAITING
+
+    \item \textbf{HTTP Request}: Browser invia POST /matches/\{id\}/join
+
+    \item \textbf{Controller Layer}:
+    \begin{itemize}
+        \item WebController.joinMatch(matchId) riceve la richiesta
+        \item Recupera currentUser da HttpSession
+        \item Chiama MatchService.joinMatch(matchId, currentUser.getId())
+    \end{itemize}
+
+    \item \textbf{Service Layer - Verifica Vincoli}:
+    \begin{itemize}
+        \item MatchService recupera Match da MatchRepository
+        \item Verifica: match.status == WAITING (altrimenti errore ``Partita già confermata'')
+        \item Verifica: activeRegistrationsCount < 4 (altrimenti errore ``Partita completa'')
+        \item Verifica: utente non già iscritto (query RegistrationRepository)
+    \end{itemize}
+
+    \item \textbf{Service Layer - Creazione Registration}:
+    \begin{itemize}
+        \item MatchService delega a RegistrationService.createRegistration(user, match)
+        \item Nuova Registration salvata con status=JOINED
+    \end{itemize}
+
+    \item \textbf{Service Layer - Controllo Auto-Conferma}:
+    \begin{lstlisting}
+if (match.getActiveRegistrationsCount() == 4) {
+    match.setStatus(MatchStatus.CONFIRMED);
+    matchRepository.save(match);
+
+    // OBSERVER PATTERN: Pubblica evento
+    eventPublisher.publishEvent(
+        new MatchConfirmedEvent(this, match)
+    );
+}
+    \end{lstlisting}
+
+    \item \textbf{Observer Pattern - Propagazione Evento}:
+    \begin{itemize}
+        \item Spring Event System riceve MatchConfirmedEvent
+        \item Identifica tutti i @EventListener interessati
+        \item Invoca MatchEventListener.handleMatchConfirmed(event)
+    \end{itemize}
+
+    \item \textbf{Observer Action}:
+    \begin{lstlisting}
+@EventListener
+public void handleMatchConfirmed(MatchConfirmedEvent event) {
+    Match match = event.getMatch();
+    notificationService.sendMatchConfirmedNotification(match);
+}
+    \end{lstlisting}
+
+    \item \textbf{Singleton - Notifiche}:
+    \begin{itemize}
+        \item NotificationService (Singleton) riceve chiamata
+        \item Recupera lista 4 giocatori da match.registrations
+        \item Per ogni giocatore: log notifica ``Partita CONFERMATA! \{location\}''
+        \item Salva notifica in stato interno (List<String>)
+    \end{itemize}
+
+    \item \textbf{HTTP Response}:
+    \begin{itemize}
+        \item WebController ritorna redirect:/matches
+        \item Flash message: ``Iscrizione completata! Partita confermata con 4 giocatori.''
+        \item Browser mostra pagina /matches aggiornata
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Disaccoppiamento Ottenuto}:
+
+\begin{itemize}
+    \item MatchService NON conosce MatchEventListener (nessuna dipendenza diretta)
+    \item MatchService NON conosce NotificationService (nessuna dipendenza diretta)
+    \item Facile aggiungere nuovi Observer (EmailListener, SMSListener) senza modificare MatchService
+    \item Rispetto Open/Closed Principle: aperto a nuovi observer, chiuso a modifiche
+\end{itemize}
+
+\textbf{Gestione Transazioni}:
+
+\begin{itemize}
+    \item Metodo \texttt{joinMatch()} è \texttt{@Transactional}
+    \item Se eccezione durante creazione Registration: rollback completo
+    \item Evento pubblicato DOPO commit transaction (garantisce consistenza)
+    \item Observer esegue in transaction separata (default Spring Events)
+\end{itemize}
+
+\newpage
+
+\subsubsection{Sequence Diagram - Strategy Pattern}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Strategy Pattern - Sequence Diagram.png}
+    \caption{Sequence Diagram - Strategy Pattern per Ordinamento Partite}
+    \label{fig:seq_strategy}
+\end{figure}
+
+\textbf{Discussione Sequence Diagram Strategy Pattern}:
+
+Questo diagramma illustra come il sistema selezioni dinamicamente a runtime l'algoritmo di ordinamento basandosi sul parametro \texttt{sort} fornito dall'utente.
+
+\textbf{Flusso Dettagliato}:
+
+\begin{enumerate}
+    \item \textbf{User Action}: Utente seleziona ordinamento dal dropdown:
+    \begin{itemize}
+        \item ``Data'' $\rightarrow$ sort=date
+        \item ``Popolarità'' $\rightarrow$ sort=popularity
+        \item ``Livello'' $\rightarrow$ sort=level
+    \end{itemize}
+
+    \item \textbf{HTTP Request}: GET /matches?sort=date
+
+    \item \textbf{Controller Layer}:
+    \begin{lstlisting}
+@GetMapping("/matches")
+public String matches(
+    @RequestParam(required=false) String sort,
+    Model model
+) {
+    List<Match> matches = matchService.getMatchesSorted(sort);
+    model.addAttribute("matches", matches);
+    return "matches";
+}
+    \end{lstlisting}
+
+    \item \textbf{Service Layer - Selezione Strategia}:
+    \begin{lstlisting}
+public List<Match> getMatchesSorted(String sortType) {
+    // Recupera tutte le partite
+    List<Match> matches = matchRepository.findAllWithCreator();
+
+    // STRATEGY PATTERN: Seleziona strategia da Map
+    String strategyKey = (sortType != null)
+        ? sortType + "Sorting"
+        : "dateSorting";  // Default
+
+    MatchSortingStrategy strategy = sortingStrategies.get(strategyKey);
+
+    if (strategy == null) {
+        strategy = sortingStrategies.get("dateSorting");
+    }
+
+    // Delega ordinamento alla strategia selezionata
+    return strategy.sort(matches);
+}
+    \end{lstlisting}
+
+    \item \textbf{Strategy Execution} - 3 scenari possibili:
+
+    \textbf{Scenario A: DateSortingStrategy}
+    \begin{lstlisting}
+@Component("dateSorting")
+public class DateSortingStrategy implements MatchSortingStrategy {
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(Match::getDateTime))
+            .collect(Collectors.toList());
+    }
+}
+    \end{lstlisting}
+
+    \textbf{Scenario B: PopularitySortingStrategy}
+    \begin{lstlisting}
+@Component("popularitySorting")
+public class PopularitySortingStrategy
+    implements MatchSortingStrategy {
+
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                Match::getActiveRegistrationsCount
+            ).reversed())
+            .collect(Collectors.toList());
+    }
+}
+    \end{lstlisting}
+
+    \textbf{Scenario C: LevelSortingStrategy}
+    \begin{lstlisting}
+@Component("levelSorting")
+public class LevelSortingStrategy implements MatchSortingStrategy {
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                m -> m.getRequiredLevel().ordinal()
+            ))
+            .collect(Collectors.toList());
+    }
+}
+    \end{lstlisting}
+
+    \item \textbf{Return}: Lista ordinata ritorna attraverso i layer: Strategy → Service → Controller
+
+    \item \textbf{View Rendering}: Template Thymeleaf renderizza lista ordinata
+\end{enumerate}
+
+\textbf{Vantaggi Strategy Pattern}:
+
+\begin{enumerate}
+    \item \textbf{Intercambiabilità Runtime}:
+    \begin{itemize}
+        \item Utente cambia ordinamento senza riavviare applicazione
+        \item Nessun if-else per selezionare algoritmo
+    \end{itemize}
+
+    \item \textbf{Open/Closed Principle}:
+    \begin{itemize}
+        \item Aggiungere nuova strategia (es. DistanceSortingStrategy) non richiede modifiche a MatchService
+        \item Basta creare nuova classe @Component che implementa MatchSortingStrategy
+        \item Spring la inietta automaticamente nella Map
+    \end{itemize}
+
+    \item \textbf{Testabilità}:
+    \begin{itemize}
+        \item Ogni strategia testabile in isolamento
+        \item Mock facile per test MatchService
+    \end{itemize}
+
+    \item \textbf{Single Responsibility}:
+    \begin{itemize}
+        \item Ogni strategia ha UNA sola responsabilità (ordinare con un criterio)
+        \item MatchService non contiene logica di ordinamento (delegata)
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Dependency Injection Automatica}:
+
+Spring popola automaticamente la Map<String, MatchSortingStrategy>:
+
+\begin{lstlisting}[caption={Come Spring Inietta le Strategie}]
+// Spring scansiona tutti i @Component che implementano
+// MatchSortingStrategy e li inietta in una Map
+
+Map<String, MatchSortingStrategy> sortingStrategies = {
+    "dateSorting": DateSortingStrategy instance,
+    "popularitySorting": PopularitySortingStrategy instance,
+    "levelSorting": LevelSortingStrategy instance
+}
+
+// La chiave è il nome del bean (@Component("dateSorting"))
+// Il valore è l'istanza singleton del bean
+\end{lstlisting}
+
+\textbf{Estendibilità Futura}:
+
+Per aggiungere ordinamento per distanza geografica:
+
+\begin{lstlisting}[caption={Nuova Strategia Senza Modifiche Esistenti}]
+@Component("distanceSorting")
+public class DistanceSortingStrategy
+    implements MatchSortingStrategy {
+
+    @Autowired
+    private LocationService locationService;
+
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        User currentUser = // ... get from session
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                m -> locationService.distanceKm(
+                    currentUser.getLocation(),
+                    m.getLocation()
+                )
+            ))
+            .collect(Collectors.toList());
+    }
+}
+
+// ✅ Nessuna modifica a:
+// - MatchService
+// - WebController
+// - Altre strategie
+
+// ✅ Basta aggiungere opzione nel dropdown HTML:
+// <option value="distance">Distanza</option>
+\end{lstlisting}
+
+\newpage
+
+% ========== CAPITOLO 4: DESIGN PATTERNS (continua prossimo file per limite token) ==========
+
+\end{document}

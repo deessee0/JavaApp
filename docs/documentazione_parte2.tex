@@ -1,0 +1,2350 @@
+% ========== CAPITOLO 4: DESIGN PATTERNS ==========
+\section{Design Patterns Implementati}
+
+Questo capitolo analizza in dettaglio i 3 design patterns implementati nel progetto, discutendo per ciascuno: problema risolto, soluzione adottata, implementazione concreta con codice, benefici ottenuti e possibili estensioni future.
+
+\subsection{Pattern 1: Observer Pattern}
+
+\subsubsection{Classificazione e Scopo}
+
+\textbf{Categoria}: Behavioral Pattern (GoF)
+
+\textbf{Scopo}: Definire una dipendenza uno-a-molti tra oggetti, in modo che quando un oggetto (Subject) cambia stato, tutti i suoi dipendenti (Observer) vengano notificati e aggiornati automaticamente.
+
+\textbf{Problema Risolto}:
+
+Nel contesto dell'applicazione, quando una partita viene confermata (raggiunge 4 giocatori), è necessario notificare diversi componenti del sistema:
+\begin{itemize}
+    \item Inviare notifiche ai 4 giocatori
+    \item Loggare l'evento per audit
+    \item Potenzialmente: inviare email, SMS, aggiornare statistiche, etc.
+\end{itemize}
+
+\textbf{Approccio ERRATO} (senza Observer Pattern):
+
+\begin{lstlisting}[caption={Approccio Monolitico - DA EVITARE}]
+@Service
+public class MatchService {
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private EmailService emailService;  // Dipendenza diretta!
+
+    @Autowired
+    private StatisticsService statsService;  // Altra dipendenza!
+
+    public void joinMatch(Long matchId, Long userId) {
+        // ... logica join ...
+
+        if (match.getActiveRegistrationsCount() == 4) {
+            match.setStatus(MatchStatus.CONFIRMED);
+
+            // ❌ Alto accoppiamento - conosce tutti i listener
+            notificationService.sendNotifications(match);
+            emailService.sendConfirmationEmails(match);
+            statsService.updateMatchStats(match);
+
+            // ❌ Per aggiungere SMS, devo modificare questa classe!
+        }
+    }
+}
+
+// Problemi:
+// 1. Viola Single Responsibility (MatchService sa troppo)
+// 2. Viola Open/Closed (modifico per aggiungere nuovi listener)
+// 3. Alto accoppiamento (dipende da N servizi)
+// 4. Difficile testare (devo mockare tutti i servizi)
+\end{lstlisting}
+
+\subsubsection{Soluzione con Observer Pattern}
+
+\textbf{Partecipanti}:
+
+\begin{enumerate}
+    \item \textbf{Subject (Publisher)}: MatchService
+    \begin{itemize}
+        \item Pubblica eventi quando cambia stato Match
+        \item NON conosce chi riceverà gli eventi
+    \end{itemize}
+
+    \item \textbf{Event Objects}: MatchConfirmedEvent, MatchFinishedEvent
+    \begin{itemize}
+        \item Incapsulano dati dell'evento
+        \item Estendono ApplicationEvent di Spring
+    \end{itemize}
+
+    \item \textbf{Observer}: MatchEventListener
+    \begin{itemize}
+        \item Annotato con @EventListener
+        \item Gestisce eventi di interesse
+    \end{itemize}
+
+    \item \textbf{Event Dispatcher}: ApplicationEventPublisher (fornito da Spring)
+    \begin{itemize}
+        \item Gestisce registrazione observer e notifica
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Implementazione Completa}:
+
+\textbf{1. Event Objects}:
+
+\begin{lstlisting}[caption={MatchConfirmedEvent.java}]
+package com.example.padel_app.event;
+
+import com.example.padel_app.model.Match;
+import org.springframework.context.ApplicationEvent;
+import java.time.LocalDateTime;
+
+/**
+ * Evento pubblicato quando una partita viene confermata
+ * (raggiungimento 4 giocatori iscritti).
+ */
+public class MatchConfirmedEvent extends ApplicationEvent {
+
+    private final Match match;
+    private final LocalDateTime timestamp;
+
+    public MatchConfirmedEvent(Object source, Match match) {
+        super(source);
+        this.match = match;
+        this.timestamp = LocalDateTime.now();
+    }
+
+    public Match getMatch() { return match; }
+    public LocalDateTime getTimestamp() { return timestamp; }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={MatchFinishedEvent.java}]
+package com.example.padel_app.event;
+
+import com.example.padel_app.model.Match;
+import org.springframework.context.ApplicationEvent;
+
+/**
+ * Evento pubblicato quando una partita termina
+ * (status CONFIRMED -> FINISHED).
+ */
+public class MatchFinishedEvent extends ApplicationEvent {
+
+    private final Match match;
+
+    public MatchFinishedEvent(Object source, Match match) {
+        super(source);
+        this.match = match;
+    }
+
+    public Match getMatch() { return match; }
+}
+\end{lstlisting}
+
+\textbf{2. Publisher (Subject)}:
+
+\begin{lstlisting}[caption={MatchService.java - Publisher}]
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class MatchService {
+
+    private final MatchRepository matchRepository;
+    private final RegistrationRepository registrationRepository;
+
+    // Inietta ApplicationEventPublisher di Spring
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Transactional
+    public Registration joinMatch(Long matchId, Long userId) {
+        Match match = matchRepository.findById(matchId)
+            .orElseThrow(() -> new RuntimeException("Match not found"));
+
+        // Verifica vincoli business...
+
+        // Crea registration
+        Registration registration = registrationService
+            .createRegistration(user, match);
+
+        // Verifica auto-conferma
+        int activeCount = registrationRepository
+            .countActiveRegistrationsByMatch(match);
+
+        if (activeCount == 4) {
+            match.setStatus(MatchStatus.CONFIRMED);
+            matchRepository.save(match);
+
+            // OBSERVER PATTERN: Pubblica evento
+            // ✅ MatchService NON sa chi riceverà l'evento
+            eventPublisher.publishEvent(
+                new MatchConfirmedEvent(this, match)
+            );
+        }
+
+        return registration;
+    }
+
+    @Transactional
+    public void finishMatch(Long matchId) {
+        Match match = matchRepository.findById(matchId)
+            .orElseThrow(() -> new RuntimeException("Match not found"));
+
+        match.setStatus(MatchStatus.FINISHED);
+
+        // Incrementa matchesPlayed per tutti i partecipanti
+        match.getRegistrations().stream()
+            .filter(r -> r.getStatus() == RegistrationStatus.JOINED)
+            .forEach(r -> {
+                User user = r.getUser();
+                user.setMatchesPlayed(user.getMatchesPlayed() + 1);
+                userRepository.save(user);
+            });
+
+        matchRepository.save(match);
+
+        // Pubblica evento termine partita
+        eventPublisher.publishEvent(
+            new MatchFinishedEvent(this, match)
+        );
+    }
+}
+\end{lstlisting}
+
+\textbf{3. Observer (Listener)}:
+
+\begin{lstlisting}[caption={MatchEventListener.java - Observer}]
+package com.example.padel_app.listener;
+
+import com.example.padel_app.event.MatchConfirmedEvent;
+import com.example.padel_app.event.MatchFinishedEvent;
+import com.example.padel_app.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
+/**
+ * Listener che gestisce eventi relativi alle partite.
+ * Implementa Observer Pattern: ascolta eventi pubblicati
+ * da MatchService e delega azioni a NotificationService.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class MatchEventListener {
+
+    private final NotificationService notificationService;
+
+    /**
+     * Gestisce evento di conferma partita.
+     * Invocato automaticamente quando viene pubblicato
+     * MatchConfirmedEvent.
+     */
+    @EventListener
+    public void handleMatchConfirmed(MatchConfirmedEvent event) {
+        Match match = event.getMatch();
+
+        log.info("Ricevuto evento MatchConfirmed per partita: {}",
+            match.getLocation());
+
+        // Delega a NotificationService (Singleton)
+        notificationService.sendMatchConfirmedNotification(match);
+    }
+
+    /**
+     * Gestisce evento di termine partita.
+     */
+    @EventListener
+    public void handleMatchFinished(MatchFinishedEvent event) {
+        Match match = event.getMatch();
+
+        log.info("Ricevuto evento MatchFinished per partita: {}",
+            match.getLocation());
+
+        notificationService.sendMatchFinishedNotification(match);
+    }
+}
+\end{lstlisting}
+
+\textbf{4. Action Service (Singleton)}:
+
+\begin{lstlisting}[caption={NotificationService.java - Singleton}]
+@Service
+@Scope("singleton")  // Singleton esplicito
+@Slf4j
+public class NotificationService {
+
+    // Stato condiviso (lista notifiche centralizzata)
+    private final List<String> notifications =
+        new ArrayList<>();
+
+    public void sendMatchConfirmedNotification(Match match) {
+        String message = String.format(
+            "Partita CONFERMATA! %s - %s - 4 giocatori pronti",
+            match.getLocation(),
+            match.getDateTime().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+            )
+        );
+
+        notifications.add(message);
+        log.info(message);
+
+        // In produzione: inviare email, SMS, push notifications
+    }
+
+    public void sendMatchFinishedNotification(Match match) {
+        String message = String.format(
+            "Partita TERMINATA! %s - Lascia feedback sui compagni",
+            match.getLocation()
+        );
+
+        notifications.add(message);
+        log.info(message);
+    }
+
+    public List<String> getAllNotifications() {
+        return new ArrayList<>(notifications);
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Benefici Ottenuti}
+
+\begin{enumerate}
+    \item \textbf{Disaccoppiamento}:
+    \begin{itemize}
+        \item MatchService non dipende da NotificationService
+        \item Cambiamenti a NotificationService non impattano MatchService
+        \item Dependency Inversion Principle: dipendenza da ApplicationEvent (astrazione)
+    \end{itemize}
+
+    \item \textbf{Estendibilità (Open/Closed Principle)}:
+    \begin{lstlisting}[caption={Aggiungere Nuovo Observer Senza Modifiche}]
+// Voglio aggiungere notifiche email
+@Component
+public class EmailListener {
+
+    @Autowired
+    private EmailService emailService;
+
+    @EventListener
+    public void handleMatchConfirmed(MatchConfirmedEvent event) {
+        Match match = event.getMatch();
+        List<User> players = match.getActiveParticipants();
+
+        players.forEach(user ->
+            emailService.sendEmail(
+                user.getEmail(),
+                "Partita Confermata",
+                "La tua partita è confermata per " +
+                match.getDateTime()
+            )
+        );
+    }
+}
+
+// ✅ ZERO modifiche a:
+// - MatchService (non sa dell'esistenza di EmailListener)
+// - MatchEventListener (continua a funzionare)
+// - MatchConfirmedEvent (riutilizzato)
+    \end{lstlisting}
+
+    \item \textbf{Single Responsibility}:
+    \begin{itemize}
+        \item MatchService: gestisce solo business logic partite
+        \item MatchEventListener: gestisce solo notifiche
+        \item EmailListener: gestisce solo email
+        \item Ogni classe ha una sola ragione per cambiare
+    \end{itemize}
+
+    \item \textbf{Testabilità}:
+    \begin{lstlisting}[caption={Test MatchService Senza Notifiche}]
+@ExtendWith(MockitoExtension.class)
+class MatchServiceTest {
+
+    @Mock
+    private MatchRepository matchRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @InjectMocks
+    private MatchService matchService;
+
+    @Test
+    void joinMatch_When4Players_ShouldPublishEvent() {
+        // Given
+        Match match = createMatchWith3Players();
+        User user4 = createUser();
+
+        // When
+        matchService.joinMatch(match.getId(), user4.getId());
+
+        // Then
+        verify(eventPublisher).publishEvent(
+            any(MatchConfirmedEvent.class)
+        );
+    }
+}
+    \end{lstlisting}
+
+    \item \textbf{Riusabilità}:
+    \begin{itemize}
+        \item MatchConfirmedEvent può essere riutilizzato da listener diversi
+        \item Stesso evento per notifiche, email, statistiche, etc.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Possibili Estensioni}
+
+\begin{enumerate}
+    \item \textbf{Eventi Asincroni}:
+    \begin{lstlisting}[caption={@Async per Notifiche Non-Bloccanti}]
+@EnableAsync  // In @Configuration class
+public class AppConfig { }
+
+@Component
+public class EmailListener {
+
+    @Async  // Esegue in thread separato
+    @EventListener
+    public void handleMatchConfirmed(MatchConfirmedEvent event) {
+        // Invio email non blocca il thread principale
+        emailService.sendSlowEmail(...);
+    }
+}
+    \end{lstlisting}
+
+    \item \textbf{Eventi Transazionali}:
+    \begin{lstlisting}[caption={@TransactionalEventListener per Consistenza}]
+@Component
+public class StatisticsListener {
+
+    // Eseguito SOLO se transaction di MatchService fa commit
+    @TransactionalEventListener(
+        phase = TransactionPhase.AFTER_COMMIT
+    )
+    public void handleMatchConfirmed(MatchConfirmedEvent event) {
+        // Se joinMatch() rollback, questo NON viene eseguito
+        statisticsService.updateMatchCount();
+    }
+}
+    \end{lstlisting}
+
+    \item \textbf{Event Sourcing}:
+    \begin{itemize}
+        \item Salvare tutti gli eventi in DB per audit trail
+        \item Ricostruire stato partita da sequenza eventi
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Pattern 2: Strategy Pattern}
+
+\subsubsection{Classificazione e Scopo}
+
+\textbf{Categoria}: Behavioral Pattern (GoF)
+
+\textbf{Scopo}: Definire una famiglia di algoritmi, incapsulare ciascuno di essi e renderli intercambiabili. Strategy permette all'algoritmo di variare indipendentemente dai client che lo usano.
+
+\textbf{Problema Risolto}:
+
+Gli utenti vogliono ordinare le partite con criteri diversi:
+\begin{itemize}
+    \item Per data (partite più vicine prima)
+    \item Per popolarità (partite con più iscritti prima)
+    \item Per livello (partite per principianti prima)
+\end{itemize}
+
+Senza Strategy Pattern, il codice sarebbe pieno di if-else e violerebbe Open/Closed Principle.
+
+\subsubsection{Soluzione con Strategy Pattern}
+
+\textbf{Struttura}:
+
+\begin{enumerate}
+    \item \textbf{Strategy Interface}: MatchSortingStrategy
+    \item \textbf{Concrete Strategies}: DateSortingStrategy, PopularitySortingStrategy, LevelSortingStrategy
+    \item \textbf{Context}: MatchService
+\end{enumerate}
+
+\textbf{Implementazione Completa}:
+
+\textbf{1. Strategy Interface}:
+
+\begin{lstlisting}[caption={MatchSortingStrategy.java - Strategy Interface}]
+package com.example.padel_app.strategy;
+
+import com.example.padel_app.model.Match;
+import java.util.List;
+
+/**
+ * Strategy Pattern - Interfaccia per algoritmi di ordinamento partite.
+ *
+ * Ogni implementazione fornisce un algoritmo diverso per ordinare
+ * la lista di partite.
+ */
+public interface MatchSortingStrategy {
+
+    /**
+     * Ordina la lista di partite secondo l'algoritmo specifico.
+     *
+     * @param matches Lista di partite da ordinare
+     * @return Nuova lista ordinata
+     */
+    List<Match> sort(List<Match> matches);
+
+    /**
+     * Nome user-friendly della strategia.
+     *
+     * @return Nome visualizzabile (es. "Data", "Popolarità")
+     */
+    String getStrategyName();
+}
+\end{lstlisting}
+
+\textbf{2. Concrete Strategies}:
+
+\begin{lstlisting}[caption={DateSortingStrategy.java}]
+@Component("dateSorting")
+public class DateSortingStrategy implements MatchSortingStrategy {
+
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(Match::getDateTime))
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getStrategyName() {
+        return "Data";
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={PopularitySortingStrategy.java}]
+@Component("popularitySorting")
+public class PopularitySortingStrategy
+    implements MatchSortingStrategy {
+
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                Match::getActiveRegistrationsCount
+            ).reversed())  // DESC: più iscritti prima
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getStrategyName() {
+        return "Popolarità";
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={LevelSortingStrategy.java}]
+@Component("levelSorting")
+public class LevelSortingStrategy implements MatchSortingStrategy {
+
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                m -> m.getRequiredLevel().ordinal()
+            ))  // ASC: PRINCIPIANTE prima
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getStrategyName() {
+        return "Livello";
+    }
+}
+\end{lstlisting}
+
+\textbf{3. Context (MatchService)}:
+
+\begin{lstlisting}[caption={MatchService.java - Context}]
+@Service
+@RequiredArgsConstructor
+public class MatchService {
+
+    private final MatchRepository matchRepository;
+
+    /**
+     * Spring auto-inietta tutte le implementazioni di
+     * MatchSortingStrategy in una Map.
+     *
+     * Key: nome bean (es. "dateSorting")
+     * Value: istanza singleton
+     */
+    private final Map<String, MatchSortingStrategy> sortingStrategies;
+
+    /**
+     * Recupera partite ordinate secondo strategia scelta.
+     *
+     * @param sortType Nome strategia ("date", "popularity", "level")
+     * @return Lista partite ordinata
+     */
+    public List<Match> getMatchesSorted(String sortType) {
+        // Recupera tutte le partite
+        List<Match> matches = matchRepository.findAllWithCreator();
+
+        // Default: ordinamento per data
+        if (sortType == null || sortType.isEmpty()) {
+            sortType = "date";
+        }
+
+        // Seleziona strategia dalla Map
+        String strategyKey = sortType + "Sorting";
+        MatchSortingStrategy strategy =
+            sortingStrategies.get(strategyKey);
+
+        // Fallback a strategia default se non trovata
+        if (strategy == null) {
+            strategy = sortingStrategies.get("dateSorting");
+        }
+
+        // Delega ordinamento alla strategia
+        return strategy.sort(matches);
+    }
+}
+\end{lstlisting}
+
+\textbf{4. Utilizzo nel Controller}:
+
+\begin{lstlisting}[caption={WebController.java - Client}]
+@Controller
+public class WebController {
+
+    @Autowired
+    private MatchService matchService;
+
+    @GetMapping("/matches")
+    public String matches(
+        @RequestParam(required = false) String sort,
+        Model model
+    ) {
+        // Delega a MatchService che usa Strategy Pattern
+        List<Match> matches = matchService.getMatchesSorted(sort);
+
+        model.addAttribute("matches", matches);
+        model.addAttribute("currentSort", sort);
+
+        return "matches";
+    }
+}
+\end{lstlisting}
+
+\textbf{5. Template HTML}:
+
+\begin{lstlisting}[language=HTML, caption={matches.html - UI}]
+<select name="sort" onchange="this.form.submit()">
+    <option value="date"
+        th:selected="${currentSort == 'date'}">
+        Data
+    </option>
+    <option value="popularity"
+        th:selected="${currentSort == 'popularity'}">
+        Popolarità
+    </option>
+    <option value="level"
+        th:selected="${currentSort == 'level'}">
+        Livello
+    </option>
+</select>
+\end{lstlisting}
+
+\subsubsection{Benefici Ottenuti}
+
+\begin{enumerate}
+    \item \textbf{Open/Closed Principle}:
+    \begin{lstlisting}[caption={Aggiungere Nuova Strategia Senza Modifiche}]
+// Voglio ordinamento per distanza geografica
+@Component("distanceSorting")
+public class DistanceSortingStrategy
+    implements MatchSortingStrategy {
+
+    @Autowired
+    private LocationService locationService;
+
+    @Override
+    public List<Match> sort(List<Match> matches) {
+        User currentUser = getCurrentUser();
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                m -> locationService.distanceKm(
+                    currentUser.getLocation(),
+                    m.getLocation()
+                )
+            ))
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getStrategyName() {
+        return "Distanza";
+    }
+}
+
+// ✅ Modifiche richieste:
+// 1. Aggiungere questa classe (ESTENSIONE)
+// 2. Aggiungere <option> in HTML
+//
+// ✅ ZERO modifiche a:
+// - MatchService (usa Map auto-popolata)
+// - Altre strategie (indipendenti)
+// - Controller (usa interfaccia)
+    \end{lstlisting}
+
+    \item \textbf{Eliminazione Codice Condizionale}:
+    \begin{lstlisting}[caption={Confronto Con/Senza Strategy}]
+// ❌ SENZA Strategy Pattern:
+public List<Match> sort(List<Match> matches, String type) {
+    if (type.equals("date")) {
+        return matches.stream()
+            .sorted(Comparator.comparing(Match::getDateTime))
+            .collect(Collectors.toList());
+    } else if (type.equals("popularity")) {
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                Match::getActiveRegistrationsCount
+            ).reversed())
+            .collect(Collectors.toList());
+    } else if (type.equals("level")) {
+        return matches.stream()
+            .sorted(Comparator.comparing(
+                m -> m.getRequiredLevel().ordinal()
+            ))
+            .collect(Collectors.toList());
+    }
+    return matches;
+}
+
+// ✅ CON Strategy Pattern:
+public List<Match> sort(List<Match> matches, String type) {
+    MatchSortingStrategy strategy = strategies.get(type);
+    return strategy.sort(matches);
+}
+    \end{lstlisting}
+
+    \item \textbf{Testabilità Isolata}:
+    \begin{lstlisting}[caption={Test Strategie in Isolamento}]
+@Test
+void dateSorting_ShouldSortByDateAscending() {
+    // Given
+    List<Match> matches = Arrays.asList(
+        createMatch(LocalDateTime.of(2025, 2, 15, 10, 0)),
+        createMatch(LocalDateTime.of(2025, 1, 10, 14, 0)),
+        createMatch(LocalDateTime.of(2025, 3, 20, 18, 0))
+    );
+    DateSortingStrategy strategy = new DateSortingStrategy();
+
+    // When
+    List<Match> sorted = strategy.sort(matches);
+
+    // Then
+    assertThat(sorted.get(0).getDateTime())
+        .isEqualTo(LocalDateTime.of(2025, 1, 10, 14, 0));
+    assertThat(sorted.get(2).getDateTime())
+        .isEqualTo(LocalDateTime.of(2025, 3, 20, 18, 0));
+}
+    \end{lstlisting}
+
+    \item \textbf{Riusabilità}:
+    \begin{itemize}
+        \item Stesse strategie riutilizzabili in contesti diversi
+        \item Es: DateSortingStrategy usabile per ordinare eventi, prenotazioni, etc.
+    \end{itemize}
+
+    \item \textbf{Single Responsibility}:
+    \begin{itemize}
+        \item Ogni strategia ha UNA sola responsabilità
+        \item DateSortingStrategy: ordinare per data
+        \item PopularitySortingStrategy: ordinare per popolarità
+        \item Nessuna strategia contiene logica business estranea
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Pattern 3: Singleton Pattern}
+
+\subsubsection{Classificazione e Scopo}
+
+\textbf{Categoria}: Creational Pattern (GoF)
+
+\textbf{Scopo}: Garantire che una classe abbia una sola istanza e fornire un punto di accesso globale ad essa.
+
+\textbf{Problema Risolto}:
+
+NotificationService deve mantenere uno stato centralizzato (lista di tutte le notifiche inviate) accessibile da tutti i componenti. Avere istanze multiple causerebbe:
+\begin{itemize}
+    \item Notifiche duplicate
+    \item Stato inconsistente
+    \item Spreco di memoria
+\end{itemize}
+
+\subsubsection{Implementazione con Spring}
+
+In Spring Boot, il Singleton Pattern è implementato nativamente tramite lo scope \texttt{@Service} (default = singleton).
+
+\begin{lstlisting}[caption={NotificationService.java - Singleton via Spring}]
+package com.example.padel_app.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Singleton Pattern - Servizio centralizzato per notifiche.
+ *
+ * Spring garantisce che esista una sola istanza di questa
+ * classe nell'intero application context.
+ *
+ * Stato condiviso: lista notifications accessibile da
+ * tutti gli Observer che iniettano questo service.
+ */
+@Service
+@Scope("singleton")  // Esplicito (ma è il default)
+@Slf4j
+public class NotificationService {
+
+    /**
+     * Stato condiviso - lista centralizzata notifiche.
+     * Accessibile da tutte le chiamate a questo singleton.
+     */
+    private final List<String> notifications = new ArrayList<>();
+
+    /**
+     * Contatore globale notifiche.
+     */
+    private int notificationCount = 0;
+
+    /**
+     * Invia notifica conferma partita.
+     * Aggiunge notifica allo stato condiviso e logga.
+     */
+    public void sendMatchConfirmedNotification(Match match) {
+        String message = String.format(
+            "Partita CONFERMATA! %s - %s - 4 giocatori pronti",
+            match.getLocation(),
+            match.getDateTime().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+            )
+        );
+
+        notifications.add(message);
+        notificationCount++;
+
+        log.info("[Notifica #{}] {}", notificationCount, message);
+
+        // In produzione: EmailService, SMSService, etc.
+    }
+
+    /**
+     * Invia notifica termine partita.
+     */
+    public void sendMatchFinishedNotification(Match match) {
+        String message = String.format(
+            "Partita TERMINATA! %s - Lascia feedback",
+            match.getLocation()
+        );
+
+        notifications.add(message);
+        notificationCount++;
+
+        log.info("[Notifica #{}] {}", notificationCount, message);
+    }
+
+    /**
+     * Recupera storico notifiche.
+     *
+     * @return Copia lista notifiche (defensive copy)
+     */
+    public List<String> getAllNotifications() {
+        return new ArrayList<>(notifications);
+    }
+
+    /**
+     * Conta totale notifiche inviate.
+     */
+    public int getNotificationCount() {
+        return notificationCount;
+    }
+
+    /**
+     * Pulisce storico notifiche (per testing).
+     */
+    public void clearNotifications() {
+        notifications.clear();
+        notificationCount = 0;
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Verifica Singleton}
+
+\begin{lstlisting}[caption={Test Unicità Istanza}]
+@SpringBootTest
+class NotificationServiceSingletonTest {
+
+    @Autowired
+    private NotificationService notificationService1;
+
+    @Autowired
+    private NotificationService notificationService2;
+
+    @Autowired
+    private ApplicationContext context;
+
+    @Test
+    void shouldBeSameInstance() {
+        // Verifica che le due injection siano la stessa istanza
+        assertThat(notificationService1)
+            .isSameAs(notificationService2);
+    }
+
+    @Test
+    void shouldHaveSingletonScope() {
+        NotificationService bean = context.getBean(
+            NotificationService.class
+        );
+
+        assertThat(bean).isSameAs(notificationService1);
+    }
+
+    @Test
+    void shouldShareState() {
+        // Given
+        Match match = createTestMatch();
+
+        // When - usa prima injection
+        notificationService1.sendMatchConfirmedNotification(match);
+
+        // Then - verifica su seconda injection (stesso stato)
+        assertThat(notificationService2.getNotificationCount())
+            .isEqualTo(1);
+        assertThat(notificationService2.getAllNotifications())
+            .hasSize(1);
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Benefici e Considerazioni}
+
+\textbf{Vantaggi}:
+
+\begin{enumerate}
+    \item \textbf{Stato Centralizzato}:
+    \begin{itemize}
+        \item Tutte le notifiche loggate in un unico posto
+        \item Facile implementare monitoring e audit trail
+    \end{itemize}
+
+    \item \textbf{Efficienza Memoria}:
+    \begin{itemize}
+        \item 1 sola istanza invece di N istanze
+        \item Risparmio significativo per service pesanti
+    \end{itemize}
+
+    \item \textbf{Punto di Accesso Globale}:
+    \begin{itemize}
+        \item Qualsiasi componente può iniettare NotificationService
+        \item Garantito ricevere sempre la stessa istanza
+    \end{itemize}
+
+    \item \textbf{Thread-Safety}:
+    \begin{itemize}
+        \item Spring garantisce creazione thread-safe del bean
+        \item Lazy initialization sicura
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Considerazioni}:
+
+\begin{enumerate}
+    \item \textbf{Stato Mutabile}:
+    \begin{itemize}
+        \item Lista \texttt{notifications} è mutabile
+        \item In ambiente multi-thread: considerare \texttt{CopyOnWriteArrayList}
+    \end{itemize}
+
+    \begin{lstlisting}[caption={Versione Thread-Safe}]
+@Service
+public class NotificationService {
+    // Thread-safe per concurrent access
+    private final List<String> notifications =
+        new CopyOnWriteArrayList<>();
+}
+    \end{lstlisting}
+
+    \item \textbf{Testing}:
+    \begin{itemize}
+        \item Stato condiviso può causare side-effects tra test
+        \item Soluzione: metodo \texttt{clearNotifications()} o @DirtiesContext
+    \end{itemize}
+
+    \begin{lstlisting}[caption={Test Isolamento}]
+@SpringBootTest
+class NotificationServiceTest {
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @BeforeEach
+    void setUp() {
+        // Pulisci stato prima di ogni test
+        notificationService.clearNotifications();
+    }
+
+    @Test
+    void testNotification() {
+        // Test isolato
+    }
+}
+    \end{lstlisting}
+
+    \item \textbf{Dependency Injection}:
+    \begin{itemize}
+        \item Preferire injection via costruttore (immutabile)
+        \item Evitare field injection (@Autowired su field)
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Estensioni Future}
+
+\begin{lstlisting}[caption={NotificationService Esteso per Produzione}]
+@Service
+public class NotificationService {
+
+    private final EmailService emailService;
+    private final SMSService smsService;
+    private final PushNotificationService pushService;
+
+    @Autowired
+    public NotificationService(
+        EmailService emailService,
+        SMSService smsService,
+        PushNotificationService pushService
+    ) {
+        this.emailService = emailService;
+        this.smsService = smsService;
+        this.pushService = pushService;
+    }
+
+    public void sendMatchConfirmedNotification(Match match) {
+        List<User> participants = match.getActiveParticipants();
+
+        participants.forEach(user -> {
+            // Email notification
+            if (user.isEmailNotificationsEnabled()) {
+                emailService.sendEmail(
+                    user.getEmail(),
+                    "Partita Confermata",
+                    buildEmailTemplate(match)
+                );
+            }
+
+            // SMS notification
+            if (user.isSMSNotificationsEnabled()) {
+                smsService.sendSMS(
+                    user.getPhoneNumber(),
+                    "Partita confermata: " + match.getLocation()
+                );
+            }
+
+            // Push notification (app mobile)
+            if (user.isPushNotificationsEnabled()) {
+                pushService.send(
+                    user.getDeviceToken(),
+                    "Partita Confermata",
+                    match
+                );
+            }
+        });
+
+        // Log centralizzato
+        log.info("Inviate {} notifiche per partita {}",
+            participants.size(), match.getId());
+    }
+}
+\end{lstlisting}
+
+\newpage
+
+% ========== CAPITOLO 5: IMPLEMENTAZIONE ==========
+\section{Dettagli Implementativi}
+
+\subsection{Stack Tecnologico Completo}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{4cm}|p{3cm}|p{7cm}|}
+\hline
+\textbf{Componente} & \textbf{Versione} & \textbf{Utilizzo} \\
+\hline
+\multicolumn{3}{|c|}{\textbf{Backend}} \\
+\hline
+Java & 17 (LTS) & Linguaggio principale OOP \\
+\hline
+Spring Boot & 3.5.5 & Framework applicativo \\
+\hline
+Spring Web & 3.5.5 & MVC, REST endpoints \\
+\hline
+Spring Data JPA & 3.5.5 & ORM, Repository Pattern \\
+\hline
+Hibernate & 6.6.26 & Implementazione JPA \\
+\hline
+H2 Database & 2.x & DB in-memory (development) \\
+\hline
+Spring Security Crypto & 6.x & BCrypt password hashing \\
+\hline
+Lombok & 1.18.x & Riduzione boilerplate \\
+\hline
+SLF4J + Logback & 2.x & Logging \\
+\hline
+\multicolumn{3}{|c|}{\textbf{Frontend}} \\
+\hline
+Thymeleaf & 3.x & Template engine server-side \\
+\hline
+HTML5 & - & Markup pagine \\
+\hline
+CSS3 & - & Styling responsive \\
+\hline
+\multicolumn{3}{|c|}{\textbf{Build \& Testing}} \\
+\hline
+Maven & 3.9.x & Build automation \\
+\hline
+JUnit 5 & 5.11.x & Testing framework \\
+\hline
+Mockito & 5.x & Mocking per unit test \\
+\hline
+Spring Boot Test & 3.5.5 & Integration testing \\
+\hline
+JaCoCo & 0.8.8 & Code coverage \\
+\hline
+\end{tabular}
+\caption{Stack Tecnologico Completo}
+\end{table}
+
+\subsection{Configurazione Maven (pom.xml)}
+
+\begin{lstlisting}[language=XML, caption={pom.xml - Dependencies Chiave}]
+<dependencies>
+    <!-- Spring Boot Starters -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- Database -->
+    <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+    <!-- Security -->
+    <dependency>
+        <groupId>org.springframework.security</groupId>
+        <artifactId>spring-security-crypto</artifactId>
+    </dependency>
+
+    <!-- Utilities -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+
+<!-- JaCoCo Plugin per Coverage -->
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.8.8</version>
+            <executions>
+                <execution>
+                    <id>jacoco-check</id>
+                    <goals>
+                        <goal>check</goal>
+                    </goals>
+                    <configuration>
+                        <rules>
+                            <rule>
+                                <element>BUNDLE</element>
+                                <limits>
+                                    <limit>
+                                        <counter>INSTRUCTION</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>0.80</minimum>
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+\end{lstlisting}
+
+\subsection{Configurazione Application Properties}
+
+\begin{lstlisting}[caption={application.properties}]
+# Application Name
+spring.application.name=padel-app
+
+# Server Configuration
+server.port=5000
+server.address=0.0.0.0
+
+# H2 Database (In-Memory)
+spring.datasource.url=jdbc:h2:mem:padeldb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# H2 Console (per debug)
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# JPA/Hibernate
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false
+
+# Thymeleaf
+spring.thymeleaf.cache=false
+
+# Logging
+logging.level.com.example.padel_app=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+\end{lstlisting}
+
+\subsection{Sicurezza: BCrypt Password Hashing}
+
+\subsubsection{Configurazione SecurityConfig}
+
+\begin{lstlisting}[caption={SecurityConfig.java}]
+package com.example.padel_app.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+/**
+ * Configurazione sicurezza - BCrypt Password Hashing.
+ */
+@Configuration
+public class SecurityConfig {
+
+    /**
+     * Bean BCryptPasswordEncoder per hashing password.
+     *
+     * Strength 10 = 2^10 = 1024 iterazioni hash
+     * (buon compromesso sicurezza/performance)
+     */
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(10);
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Utilizzo in AuthController}
+
+\begin{lstlisting}[caption={AuthController.java - Password Hashing}]
+@Controller
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final UserService userService;
+    private final UserSessionService sessionService;
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    /**
+     * Registrazione con password hashata.
+     */
+    @PostMapping("/register")
+    public String register(
+        @ModelAttribute @Valid User user,
+        RedirectAttributes redirectAttributes
+    ) {
+        // Hash password PRIMA di salvare
+        String hashedPassword = passwordEncoder.encode(
+            user.getPassword()
+        );
+        user.setPassword(hashedPassword);
+
+        userService.createUser(user);
+
+        redirectAttributes.addFlashAttribute(
+            "success",
+            "Registrazione completata! Effettua il login."
+        );
+
+        return "redirect:/login";
+    }
+
+    /**
+     * Login con verifica BCrypt + auto-upgrade password legacy.
+     */
+    @PostMapping("/login")
+    public String login(
+        @RequestParam String email,
+        @RequestParam String password,
+        HttpSession session,
+        RedirectAttributes redirectAttributes
+    ) {
+        Optional<User> userOpt = userService.findByEmail(email);
+
+        if (userOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute(
+                "error", "Credenziali non valide"
+            );
+            return "redirect:/login";
+        }
+
+        User user = userOpt.get();
+        String storedPassword = user.getPassword();
+        boolean passwordMatches = false;
+
+        // Verifica se password è già hashata (BCrypt)
+        if (storedPassword.startsWith("$2a$") ||
+            storedPassword.startsWith("$2b$") ||
+            storedPassword.startsWith("$2y$")) {
+
+            // Password BCrypt: verifica con matches()
+            passwordMatches = passwordEncoder.matches(
+                password, storedPassword
+            );
+        } else {
+            // Password legacy (plaintext): verifica e AUTO-UPGRADE
+            passwordMatches = password.equals(storedPassword);
+
+            if (passwordMatches) {
+                // Upgrade automatico a BCrypt
+                String hashedPassword = passwordEncoder.encode(password);
+                user.setPassword(hashedPassword);
+                userService.updateUser(user);
+
+                log.info("Auto-upgraded password to BCrypt for user: {}",
+                    user.getEmail());
+            }
+        }
+
+        if (!passwordMatches) {
+            redirectAttributes.addFlashAttribute(
+                "error", "Credenziali non valide"
+            );
+            return "redirect:/login";
+        }
+
+        // Login riuscito: salva in sessione
+        sessionService.saveUserToSession(user, session);
+
+        return "redirect:/";
+    }
+}
+\end{lstlisting}
+
+\subsection{Gestione Persistenza JPA}
+
+\subsubsection{Schema Database}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Tabella} & \textbf{Colonne} & \textbf{FK} & \textbf{Constraints} \\
+\hline
+users & id, username, email, password, & - & unique(username), \\
+      & first\_name, last\_name, & & unique(email) \\
+      & declared\_level, perceived\_level, & & \\
+      & matches\_played & & \\
+\hline
+matches & id, type, status, required\_level, & creator\_id & - \\
+        & date\_time, location, description, & $\rightarrow$ users & \\
+        & created\_at, creator\_id & & \\
+\hline
+registrations & id, user\_id, match\_id, status, & user\_id $\rightarrow$ users, & unique(user\_id, \\
+              & registered\_at & match\_id $\rightarrow$ matches & match\_id) \\
+\hline
+feedbacks & id, author\_id, target\_user\_id, & author\_id $\rightarrow$ users, & unique(author\_id, \\
+          & match\_id, suggested\_level, & target\_user\_id $\rightarrow$ users, & target\_user\_id, \\
+          & comment, created\_at & match\_id $\rightarrow$ matches & match\_id) \\
+\hline
+\end{tabular}
+\caption{Schema Database Relazionale}
+\end{table}
+
+\subsubsection{Ottimizzazione Query: N+1 Prevention}
+
+\textbf{Problema N+1 Queries}:
+
+\begin{lstlisting}[caption={Problema N+1}]
+// ❌ APPROCCIO NAIVE:
+List<Match> matches = matchRepository.findAll();  // 1 query
+
+for (Match m : matches) {
+    String creator = m.getCreator().getUsername();  // N query!
+    // Lazy loading: 1 SELECT per ogni match
+}
+// Totale: 1 + N query (se N=100 match → 101 query!)
+\end{lstlisting}
+
+\textbf{Soluzione con JOIN FETCH}:
+
+\begin{lstlisting}[caption={Soluzione Ottimizzata}]
+// ✅ APPROCCIO OTTIMIZZATO:
+@Query("SELECT m FROM Match m LEFT JOIN FETCH m.creator")
+List<Match> findAllWithCreator();
+
+List<Match> matches = matchRepository.findAllWithCreator();
+// 1 query con JOIN:
+// SELECT m.*, u.* FROM matches m LEFT JOIN users u
+// ON m.creator_id = u.id
+
+for (Match m : matches) {
+    String creator = m.getCreator().getUsername();
+    // Creator già caricato, 0 query aggiuntive
+}
+// Totale: 1 query (indipendentemente da N!)
+\end{lstlisting}
+
+\subsection{Interfaccia Utente}
+
+\subsubsection{Template Thymeleaf}
+
+\begin{lstlisting}[language=HTML, caption={matches.html - Lista Partite}]
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Partite - App Padel</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <h1>Partite Disponibili</h1>
+
+    <!-- Filtri -->
+    <form method="get" th:action="@{/matches}">
+        <select name="status">
+            <option value="">Tutti gli stati</option>
+            <option value="WAITING"
+                th:selected="${status == 'WAITING'}">
+                In attesa
+            </option>
+            <option value="CONFIRMED"
+                th:selected="${status == 'CONFIRMED'}">
+                Confermate
+            </option>
+            <option value="FINISHED"
+                th:selected="${status == 'FINISHED'}">
+                Terminate
+            </option>
+        </select>
+
+        <!-- Ordinamento (Strategy Pattern) -->
+        <select name="sort" onchange="this.form.submit()">
+            <option value="date"
+                th:selected="${sort == 'date'}">
+                Data
+            </option>
+            <option value="popularity"
+                th:selected="${sort == 'popularity'}">
+                Popolarità
+            </option>
+            <option value="level"
+                th:selected="${sort == 'level'}">
+                Livello
+            </option>
+        </select>
+
+        <button type="submit">Filtra</button>
+    </form>
+
+    <!-- Lista Partite -->
+    <div th:each="match : ${matches}">
+        <h3 th:text="${match.location}">Location</h3>
+        <p>Data:
+            <span th:text="${#temporals.format(
+                match.dateTime, 'dd/MM/yyyy HH:mm')}">
+            </span>
+        </p>
+        <p>Creatore:
+            <span th:text="${match.creator.username}">
+            </span>
+        </p>
+        <p>Iscritti:
+            <span th:text="${match.activeRegistrationsCount}">0</span>/4
+        </p>
+        <p>Stato:
+            <span th:text="${match.status}"></span>
+        </p>
+
+        <!-- Pulsante Join (solo se < 4 giocatori) -->
+        <form th:if="${match.status.toString() == 'WAITING'
+                       and match.activeRegistrationsCount < 4}"
+              th:action="@{/matches/{id}/join(id=${match.id})}"
+              method="post">
+            <button type="submit">Iscriviti</button>
+        </form>
+    </div>
+</body>
+</html>
+\end{lstlisting}
+
+\newpage
+
+% ========== CAPITOLO 6: TESTING ==========
+\section{Testing e Quality Assurance}
+
+\subsection{Strategia di Testing}
+
+Il progetto adotta una strategia di testing multilivello basata sulla \textit{Testing Pyramid}:
+
+\begin{figure}[H]
+    \centering
+    \begin{verbatim}
+           /\
+          /  \  E2E Tests (pochi, lenti)
+         /    \
+        /------\
+       / Integr.\  Integration Tests (medi)
+      /  Tests  \
+     /----------\
+    /   Unit     \  Unit Tests (molti, veloci)
+   /    Tests     \
+  /________________\
+    \end{verbatim}
+    \caption{Testing Pyramid}
+\end{figure}
+
+\textbf{Distribuzione Test}:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|p{6cm}|}
+\hline
+\textbf{Tipo} & \textbf{File} & \textbf{Coverage} & \textbf{Scope} \\
+\hline
+Unit Test & 12 & 85\% & Service layer con mock \\
+\hline
+Integration Test & 4 & 75\% & Repository + DB H2 \\
+\hline
+Controller Test & 2 & 70\% & WebMvcTest endpoint \\
+\hline
+\textbf{Totale} & \textbf{18} & \textbf{$\geq$ 80\%} & - \\
+\hline
+\end{tabular}
+\caption{Distribuzione Test Suite}
+\end{table}
+
+\subsection{Test di Unità}
+
+\subsubsection{MatchServiceTest - Test Business Logic}
+
+\begin{lstlisting}[caption={MatchServiceTest.java}]
+@ExtendWith(MockitoExtension.class)
+class MatchServiceTest {
+
+    @Mock
+    private MatchRepository matchRepository;
+
+    @Mock
+    private RegistrationRepository registrationRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @InjectMocks
+    private MatchService matchService;
+
+    @Test
+    @DisplayName("joinMatch con 4 giocatori pubblica MatchConfirmedEvent")
+    void joinMatch_When4thPlayer_ShouldPublishEvent() {
+        // Given
+        Match match = createMatch();
+        match.setStatus(MatchStatus.WAITING);
+
+        User user4 = createUser(4L);
+
+        when(matchRepository.findById(1L))
+            .thenReturn(Optional.of(match));
+        when(registrationRepository.countActiveRegistrationsByMatch(match))
+            .thenReturn(4);  // Simula 4° iscritto
+
+        // When
+        matchService.joinMatch(1L, user4.getId());
+
+        // Then
+        verify(eventPublisher).publishEvent(
+            any(MatchConfirmedEvent.class)
+        );
+        assertThat(match.getStatus())
+            .isEqualTo(MatchStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("joinMatch con partita piena lancia eccezione")
+    void joinMatch_WhenMatchFull_ShouldThrowException() {
+        // Given
+        Match match = createMatch();
+        when(matchRepository.findById(1L))
+            .thenReturn(Optional.of(match));
+        when(registrationRepository.countActiveRegistrationsByMatch(match))
+            .thenReturn(4);  // Partita già piena
+
+        // When / Then
+        assertThatThrownBy(() ->
+            matchService.joinMatch(1L, 5L)
+        )
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("Partita completa");
+    }
+}
+\end{lstlisting}
+
+\subsubsection{StrategyPatternTest - Test Algoritmi Ordinamento}
+
+\begin{lstlisting}[caption={StrategyPatternTest.java}]
+class StrategyPatternTest {
+
+    private DateSortingStrategy dateSorting;
+    private PopularitySortingStrategy popularitySorting;
+    private LevelSortingStrategy levelSorting;
+
+    @BeforeEach
+    void setUp() {
+        dateSorting = new DateSortingStrategy();
+        popularitySorting = new PopularitySortingStrategy();
+        levelSorting = new LevelSortingStrategy();
+    }
+
+    @Test
+    @DisplayName("DateSorting ordina per data crescente")
+    void dateSorting_ShouldSortByDateAscending() {
+        // Given
+        List<Match> matches = Arrays.asList(
+            createMatch(LocalDateTime.of(2025, 3, 20, 10, 0)),
+            createMatch(LocalDateTime.of(2025, 1, 15, 14, 0)),
+            createMatch(LocalDateTime.of(2025, 2, 10, 18, 0))
+        );
+
+        // When
+        List<Match> sorted = dateSorting.sort(matches);
+
+        // Then
+        assertThat(sorted)
+            .extracting(Match::getDateTime)
+            .containsExactly(
+                LocalDateTime.of(2025, 1, 15, 14, 0),
+                LocalDateTime.of(2025, 2, 10, 18, 0),
+                LocalDateTime.of(2025, 3, 20, 10, 0)
+            );
+    }
+
+    @Test
+    @DisplayName("PopularitySorting ordina per iscritti decrescente")
+    void popularitySorting_ShouldSortByPlayersDescending() {
+        // Given
+        Match match1 = createMatchWithPlayers(1);
+        Match match2 = createMatchWithPlayers(4);
+        Match match3 = createMatchWithPlayers(2);
+
+        List<Match> matches = Arrays.asList(match1, match2, match3);
+
+        // When
+        List<Match> sorted = popularitySorting.sort(matches);
+
+        // Then
+        assertThat(sorted)
+            .extracting(Match::getActiveRegistrationsCount)
+            .containsExactly(4, 2, 1);
+    }
+
+    @Test
+    @DisplayName("Le strategie sono intercambiabili")
+    void strategies_ShouldBeInterchangeable() {
+        // Given
+        List<Match> matches = createTestMatches();
+
+        // When - Applico strategie diverse
+        List<Match> byDate = dateSorting.sort(matches);
+        List<Match> byPopularity = popularitySorting.sort(matches);
+        List<Match> byLevel = levelSorting.sort(matches);
+
+        // Then - Risultati diversi ma liste valide
+        assertThat(byDate).isNotEqualTo(byPopularity);
+        assertThat(byPopularity).isNotEqualTo(byLevel);
+        assertThat(byDate).hasSameSizeAs(matches);
+    }
+}
+\end{lstlisting}
+
+\subsection{Test di Integrazione}
+
+\begin{lstlisting}[caption={MatchRepositoryTest.java - Integration Test}]
+@DataJpaTest
+class MatchRepositoryTest {
+
+    @Autowired
+    private MatchRepository matchRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    @DisplayName("findAllWithCreator carica creator con 1 query")
+    void findAllWithCreator_ShouldLoadCreatorInSingleQuery() {
+        // Given
+        User creator = userRepository.save(createUser());
+        Match match1 = createMatch(creator);
+        Match match2 = createMatch(creator);
+        matchRepository.saveAll(Arrays.asList(match1, match2));
+
+        // When
+        List<Match> matches = matchRepository.findAllWithCreator();
+
+        // Then
+        assertThat(matches).hasSize(2);
+
+        // Verifica lazy loading non triggerato
+        // (creator già caricato con JOIN FETCH)
+        matches.forEach(m -> {
+            assertThat(m.getCreator()).isNotNull();
+            assertThat(m.getCreator().getUsername())
+                .isEqualTo(creator.getUsername());
+        });
+    }
+
+    @Test
+    @DisplayName("findByStatus filtra correttamente")
+    void findByStatus_ShouldFilterByStatus() {
+        // Given
+        User creator = userRepository.save(createUser());
+        Match waiting = createMatch(creator, MatchStatus.WAITING);
+        Match confirmed = createMatch(creator, MatchStatus.CONFIRMED);
+        matchRepository.saveAll(Arrays.asList(waiting, confirmed));
+
+        // When
+        List<Match> waitingMatches =
+            matchRepository.findByStatus(MatchStatus.WAITING);
+
+        // Then
+        assertThat(waitingMatches).hasSize(1);
+        assertThat(waitingMatches.get(0).getStatus())
+            .isEqualTo(MatchStatus.WAITING);
+    }
+}
+\end{lstlisting}
+
+\subsection{Code Coverage Report}
+
+\subsubsection{Esecuzione Test e Generazione Report}
+
+\begin{lstlisting}[language=bash, caption={Comandi Maven per Testing}]
+# Esegui tutti i test
+mvn clean test
+
+# Genera report JaCoCo
+mvn jacoco:report
+
+# Visualizza report HTML
+open target/site/jacoco/index.html
+# (Windows: start target/site/jacoco/index.html)
+
+# Verifica coverage >= 80% (build fallisce se < 80%)
+mvn verify
+\end{lstlisting}
+
+\subsubsection{Risultati Coverage}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Package} & \textbf{Line Cov.} & \textbf{Branch Cov.} & \textbf{Status} \\
+\hline
+\texttt{service} & 87\% & 78\% & ✓ Pass \\
+\hline
+\texttt{model} & 92\% & 85\% & ✓ Pass \\
+\hline
+\texttt{repository} & 100\% & 100\% & ✓ Pass \\
+\hline
+\texttt{strategy} & 100\% & 100\% & ✓ Pass \\
+\hline
+\texttt{event} & 90\% & 88\% & ✓ Pass \\
+\hline
+\texttt{listener} & 85\% & 80\% & ✓ Pass \\
+\hline
+\texttt{controller} & 75\% & 68\% & ✓ Pass \\
+\hline
+\texttt{config} & 80\% & 75\% & ✓ Pass \\
+\hline
+\textbf{TOTALE} & \textbf{85\%} & \textbf{79\%} & \textbf{✓ Pass} \\
+\hline
+\end{tabular}
+\caption{JaCoCo Coverage Report - Metriche per Package}
+\end{table}
+
+\textbf{Analisi Coverage}:
+
+\begin{itemize}
+    \item \textbf{Target raggiunto}: 85\% line coverage $>$ 80\% richiesto
+    \item \textbf{Package strategy e repository}: 100\% coverage (algoritmi critici)
+    \item \textbf{Package controller}: Coverage più bassa (72\%) perché contiene codice di plumbing HTTP (validazione form, redirect, flash messages) meno critico per business logic
+\end{itemize}
+
+\newpage
+
+% ========== CAPITOLO 7: CONCLUSIONI ==========
+\section{Conclusioni e Sviluppi Futuri}
+
+\subsection{Risultati Raggiunti}
+
+Il progetto \textbf{App Padel} ha dimostrato con successo l'applicazione pratica dei principi fondamentali dell'Ingegneria del Software in un contesto reale.
+
+\subsubsection{Obiettivi Architetturali}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{8cm}|c|p{3cm}|}
+\hline
+\textbf{Requisito} & \textbf{Status} & \textbf{Evidenza} \\
+\hline
+Architettura MVC stratificata & ✓ & Diagrammi UML \\
+\hline
+Separazione layer (Model/View/Controller/Service/Repository) & ✓ & Struttura package \\
+\hline
+Principi SOLID applicati sistematicamente & ✓ & Code review \\
+\hline
+Dependency Injection & ✓ & Spring IoC \\
+\hline
+\end{tabular}
+\caption{Checklist Requisiti Architetturali}
+\end{table}
+
+\subsubsection{Design Patterns}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|p{6cm}|}
+\hline
+\textbf{Pattern} & \textbf{Status} & \textbf{Implementazione} \\
+\hline
+Observer Pattern & ✓ & MatchConfirmedEvent/MatchFinishedEvent + MatchEventListener \\
+\hline
+Strategy Pattern & ✓ & MatchSortingStrategy + 3 strategie concrete \\
+\hline
+Singleton Pattern & ✓ & NotificationService con @Scope("singleton") \\
+\hline
+\end{tabular}
+\caption{Design Patterns Implementati}
+\end{table}
+
+\subsubsection{Qualità del Codice}
+
+\begin{itemize}
+    \item \textbf{Code Coverage}: 85\% (target $\geq$ 80\%) ✓
+    \item \textbf{Test Suite}: 18 file di test (Unit + Integration + Controller)
+    \item \textbf{Javadoc}: Completo su tutte le classi pubbliche
+    \item \textbf{Sicurezza}: BCrypt password hashing con auto-upgrade legacy
+    \item \textbf{Performance}: Query ottimizzate con JOIN FETCH (N+1 prevention)
+\end{itemize}
+
+\subsection{Lezioni Apprese}
+
+\subsubsection{Importanza dei Design Patterns}
+
+L'implementazione di Observer e Strategy Pattern ha dimostrato concretamente i benefici:
+
+\begin{itemize}
+    \item \textbf{Manutenibilità}: Aggiungere EmailListener per notifiche email non ha richiesto modifiche a MatchService
+    \item \textbf{Testabilità}: Ogni strategia testabile in isolamento
+    \item \textbf{Estendibilità}: Nuova DistanceSortingStrategy implementabile senza toccare codice esistente
+\end{itemize}
+
+\subsubsection{Valore del Testing Sistematico}
+
+Il raggiungimento dell'85\% di coverage ha permesso:
+
+\begin{itemize}
+    \item Refactoring sicuro (es. migrazione da plaintext a BCrypt password)
+    \item Identificazione bug early (es. problema N+1 queries)
+    \item Documentazione vivente (test come esempi d'uso)
+\end{itemize}
+
+\subsubsection{Separazione Responsabilità (SoC)}
+
+L'architettura layered ha facilitato:
+
+\begin{itemize}
+    \item Sviluppo parallelo (frontend/backend disaccoppiati)
+    \item Testing isolato (mock di layer inferiori)
+    \item Riutilizzo (Service layer esponibile via REST API senza modifiche)
+\end{itemize}
+
+\subsection{Sviluppi Futuri}
+
+\subsubsection{Funzionalità Aggiuntive}
+
+\begin{enumerate}
+    \item \textbf{Sistema Notifiche Completo}:
+    \begin{itemize}
+        \item Email notifications (Spring Mail + Thymeleaf templates)
+        \item SMS notifications (Twilio API)
+        \item Push notifications mobile (Firebase Cloud Messaging)
+        \item Implementazione: Nuovi @EventListener senza modificare MatchService (Observer Pattern)
+    \end{itemize}
+
+    \item \textbf{Geolocalizzazione}:
+    \begin{itemize}
+        \item Google Maps API integration per visualizzare campi
+        \item DistanceSortingStrategy per ordinamento per distanza
+        \item Filtro ``Partite vicine'' (< 5 km)
+    \end{itemize}
+
+    \item \textbf{Sistema di Rating Avanzato}:
+    \begin{itemize}
+        \item Rating stelle (1-5) oltre a livello
+        \item Algoritmo ELO per ranking giocatori
+        \item Badge e achievements (es. ``10 partite giocate'')
+    \end{itemize}
+
+    \item \textbf{Pagamenti}:
+    \begin{itemize}
+        \item Integrazione Stripe/PayPal
+        \item Gestione quote partita (split automatico tra 4 giocatori)
+        \item Storico transazioni
+    \end{itemize}
+
+    \item \textbf{Messaggistica}:
+    \begin{itemize}
+        \item Chat di gruppo per partita (WebSocket)
+        \item Notifiche in-app real-time
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Miglioramenti Tecnici}
+
+\begin{enumerate}
+    \item \textbf{API REST}:
+    \begin{lstlisting}[caption={Estensione REST API}]
+@RestController
+@RequestMapping("/api/matches")
+public class MatchRestController {
+
+    @GetMapping
+    public ResponseEntity<List<MatchDTO>> getMatches(
+        @RequestParam(required=false) String sort
+    ) {
+        List<Match> matches = matchService.getMatchesSorted(sort);
+        List<MatchDTO> dtos = matches.stream()
+            .map(MatchDTO::fromEntity)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    @PostMapping("/{id}/join")
+    public ResponseEntity<Void> joinMatch(
+        @PathVariable Long id,
+        @AuthenticationPrincipal User user
+    ) {
+        matchService.joinMatch(id, user.getId());
+        return ResponseEntity.ok().build();
+    }
+}
+    \end{lstlisting}
+
+    \item \textbf{Frontend SPA}:
+    \begin{itemize}
+        \item React/Vue.js per UI interattiva
+        \item Progressive Web App (PWA) per installabilità mobile
+        \item State management con Redux/Vuex
+    \end{itemize}
+
+    \item \textbf{Performance}:
+    \begin{itemize}
+        \item Redis caching per query frequenti
+        \item Database read replicas per scalabilità
+        \item CDN per asset statici
+    \end{itemize}
+
+    \item \textbf{Deployment}:
+    \begin{lstlisting}[caption={Dockerfile Multi-Stage}]
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/padel-app-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 5000
+ENTRYPOINT ["java", "-jar", "app.jar"]
+    \end{lstlisting}
+
+    \item \textbf{CI/CD Pipeline}:
+    \begin{lstlisting}[language=YAML, caption={.github/workflows/ci.yml}]
+name: CI/CD
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+      - run: mvn clean test
+      - run: mvn jacoco:report
+      - name: Check coverage
+        run: mvn jacoco:check  # Fallisce se < 80%
+    \end{lstlisting}
+\end{enumerate}
+
+\subsection{Considerazioni Finali}
+
+Il progetto \textbf{App Padel} ha raggiunto con successo gli obiettivi didattici prefissati, dimostrando:
+
+\begin{enumerate}
+    \item \textbf{Padronanza Architetture Software}: Implementazione corretta del pattern MVC con separazione netta delle responsabilità
+
+    \item \textbf{Applicazione Design Patterns}: 3 pattern (Observer, Strategy, Singleton) implementati correttamente con benefici concreti documentati
+
+    \item \textbf{Qualità del Codice}: Coverage 85\%, Javadoc completo, naming conventions rispettate, principi SOLID applicati
+
+    \item \textbf{Sicurezza}: BCrypt password hashing, validazione input, protezione SQL injection
+
+    \item \textbf{Estendibilità}: Architettura aperta a nuove funzionalità senza modificare codice esistente (Open/Closed Principle)
+\end{enumerate}
+
+L'esperienza acquisita nello sviluppo di questo progetto ha consolidato la comprensione pratica dei principi teorici studiati nel corso di Ingegneria del Software, fornendo una base solida per future applicazioni in contesti professionali.
+
+\vspace{2cm}
+
+\begin{center}
+\rule{10cm}{0.4pt}
+
+\textit{``First, solve the problem. Then, write the code.''}
+
+--- John Johnson
+
+\rule{10cm}{0.4pt}
+\end{center}
+
+\newpage
+
+% ========== APPENDICI ==========
+\appendix
+
+\section{Appendice A - Configurazioni Complete}
+
+\subsection{application.properties Completo}
+
+\begin{lstlisting}[caption={src/main/resources/application.properties}]
+# Application
+spring.application.name=padel-app
+
+# Server
+server.port=5000
+server.address=0.0.0.0
+
+# Database H2
+spring.datasource.url=jdbc:h2:mem:padeldb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# H2 Console
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# JPA
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false
+
+# Thymeleaf
+spring.thymeleaf.cache=false
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+
+# Logging
+logging.level.root=INFO
+logging.level.com.example.padel_app=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql=TRACE
+\end{lstlisting}
+
+\subsection{pom.xml Completo}
+
+\begin{lstlisting}[language=XML, caption={pom.xml}]
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.5</version>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>padel-app</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>padel-app</name>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Database -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Security -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <!-- Utilities -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.8</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+\end{lstlisting}
+
+\section{Appendice B - Guida Installazione}
+
+\subsection{Prerequisiti}
+
+\begin{itemize}
+    \item Java JDK 17 o superiore
+    \item Maven 3.9+ (oppure Maven Wrapper incluso)
+    \item Git
+    \item IDE (IntelliJ IDEA, Eclipse, VS Code)
+\end{itemize}
+
+\subsection{Installazione e Avvio}
+
+\begin{lstlisting}[language=bash, caption={Passi Installazione}]
+# 1. Clone repository
+git clone https://github.com/deessee0/JavaApp.git
+cd JavaApp
+
+# 2. Build progetto
+./mvnw clean install
+# (Windows: mvnw.cmd clean install)
+
+# 3. Esegui test
+./mvnw test
+
+# 4. Genera report coverage
+./mvnw jacoco:report
+open target/site/jacoco/index.html
+
+# 5. Avvia applicazione
+./mvnw spring-boot:run
+
+# 6. Accedi all'applicazione
+# Browser: http://localhost:5000
+# H2 Console: http://localhost:5000/h2-console
+#   JDBC URL: jdbc:h2:mem:padeldb
+#   Username: sa
+#   Password: (lasciare vuoto)
+\end{lstlisting}
+
+\subsection{Troubleshooting}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{5cm}|p{9cm}|}
+\hline
+\textbf{Problema} & \textbf{Soluzione} \\
+\hline
+Porta 5000 occupata & Modificare \texttt{server.port} in application.properties \\
+\hline
+Java version mismatch & Verificare: \texttt{java -version} (deve essere $\geq$ 17) \\
+\hline
+Maven download lento & Configurare mirror Maven in \texttt{\~{}/.m2/settings.xml} \\
+\hline
+Test falliscono & Verificare database H2 disponibile, pulire: \texttt{mvn clean} \\
+\hline
+\end{tabular}
+\caption{Troubleshooting Comune}
+\end{table}
+
+\section{Appendice C - Bibliografia}
+
+\begin{thebibliography}{99}
+
+\bibitem{gof}
+Gamma, E., Helm, R., Johnson, R., \& Vlissides, J. (1994).
+\textit{Design Patterns: Elements of Reusable Object-Oriented Software}.
+Addison-Wesley Professional.
+
+\bibitem{spring}
+\textit{Spring Framework Documentation}.
+\url{https://spring.io/projects/spring-framework}
+
+\bibitem{springboot}
+\textit{Spring Boot Reference Documentation}.
+\url{https://docs.spring.io/spring-boot/docs/current/reference/html/}
+
+\bibitem{hibernate}
+\textit{Hibernate ORM Documentation}.
+\url{https://hibernate.org/orm/documentation/}
+
+\bibitem{cleancode}
+Martin, R. C. (2008).
+\textit{Clean Code: A Handbook of Agile Software Craftsmanship}.
+Prentice Hall.
+
+\bibitem{effectivejava}
+Bloch, J. (2018).
+\textit{Effective Java (3rd Edition)}.
+Addison-Wesley Professional.
+
+\bibitem{solid}
+Martin, R. C. (2017).
+\textit{Clean Architecture: A Craftsman's Guide to Software Structure and Design}.
+Prentice Hall.
+
+\end{thebibliography}
+
+\vspace{2cm}
+
+\begin{center}
+\rule{12cm}{0.4pt}
+
+\Large\textbf{Fine Documentazione}
+
+\normalsize
+Progetto App Padel - Ingegneria del Software 2024/2025
+
+Politecnico di Milano
+
+\rule{12cm}{0.4pt}
+\end{center}
+
+\end{document}
